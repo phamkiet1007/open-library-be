@@ -1,0 +1,139 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model VerificationToken {
+  id        Int      @id @default(autoincrement())
+  token     String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [userId])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model User {
+  userId           Int      @id @default(autoincrement())
+  username         String   @unique
+  email            String   @unique
+  password         String
+  address          String
+  role             Role     @default(MEMBER)
+  created_at       DateTime @default(now())
+  email_verification EmailVerificationStatus @default(NOT_VERIFIED)
+  verificationToken VerificationToken[]
+  // Các quan hệ ngược lại
+  ratings   Rating[]
+  orders    Order[]
+}
+
+enum Role {
+  MEMBER
+  ADMIN
+}
+
+enum EmailVerificationStatus {
+  VERIFIED
+  NOT_VERIFIED
+}
+
+model Book {
+  bookId            Int       @id @default(autoincrement())
+  title             String
+  author            String
+  price             Float
+  quantity_available Int
+  description       String?
+  coverImage        String?
+  publisher         String?
+  publishDate       DateTime?
+  isbn              String?   @unique
+  format            BookFormat @default(PAPERBACK)
+  filePath          String?   
+  previewPages      Int?      @default(20)
+  isAvailableOnline Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  // Relationships
+  categories        BookCategory[]
+  orderItems        OrderItem[]
+  ratings           Rating[]
+}
+
+model Category {
+  categoryId   Int           @id @default(autoincrement())
+  name         String        @unique
+  books        BookCategory[]
+}
+
+// Bảng trung gian cho quan hệ nhiều-nhiều
+model BookCategory {
+  bookId      Int
+  categoryId  Int
+  
+  book        Book     @relation(fields: [bookId], references: [bookId])
+  category    Category @relation(fields: [categoryId], references: [categoryId])
+  
+  @@id([bookId, categoryId])
+}
+
+enum BookFormat {
+  HARDCOVER
+  PAPERBACK
+  EBOOK
+}
+
+model Rating {
+  ratingId     Int      @id @default(autoincrement())
+  bookId       Int
+  userId       Int
+  rating       Float    
+  review       String?
+  created_at   DateTime @default(now())
+  
+  book         Book     @relation(fields: [bookId], references: [bookId])
+  user         User     @relation(fields: [userId], references: [userId])
+  
+  @@unique([bookId, userId]) // Mỗi user chỉ có thể đánh giá một sách một lần
+}
+
+model Order {
+  orderId     Int       @id @default(autoincrement())
+  userId      Int
+  order_date  DateTime  @default(now())
+  total_amount Float
+  status      String
+
+  user        User      @relation(fields: [userId], references: [userId])
+  orderItems  OrderItem[]
+  payments    Payment[]
+}
+
+model OrderItem {
+  orderItemId   Int     @id @default(autoincrement())
+  orderId       Int
+  bookId        Int
+  quantity      Int
+  price_per_unit Float
+
+  order         Order   @relation(fields: [orderId], references: [orderId])
+  book          Book    @relation(fields: [bookId], references: [bookId])
+}
+
+model Payment {
+  paymentId       Int      @id @default(autoincrement())
+  orderId         Int
+  amount          Float
+  payment_date    DateTime @default(now())
+  payment_method  String
+  transaction_id  String   @unique
+
+  order           Order    @relation(fields: [orderId], references: [orderId])
+}
