@@ -1,5 +1,9 @@
+const { getVietnamTime } = require('../utils/date.utils');
+
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { book, rating, category, bookCategory } = new PrismaClient({
+    log: ["query", "info", "warn", "error"]
+});;
 
 const {
     createError,
@@ -18,95 +22,136 @@ const getPagination = (page, limit) => {
 };
 
 //Create book
-const createBook = async (bookData) => {
+const createBook = async (req, res) => {
     try {
-        return await prisma.book.create({ data: bookData });
+        const { categories, ...bookData } = req.body;
+
+        const newBook = await prisma.book.create({
+            data: {
+                ...bookData,
+                created_at: getVietnamTime(),
+                updated_at: getVietnamTime(),
+                categories: {
+                    create: categories.map((categoryId) => ({
+                        category: {
+                            connect: { categoryId }
+                        }
+                    })),
+                },
+            },
+            
+        });
+
+        res.status(201).json(newBook);
     } catch (error) {
-        throw createError(GENERAL_ERROR, 'Error creating book');
+        console.error(error);
+        res.status(500).json(error);
     }
 };
 
 //Get all books
-const getBooks = async (filters = {}, page = 1, limit = 10, sortField = 'created_at', sortOrder = 'desc') => {
-    const { skip, take } = getPagination(page, limit);
+// const getBooks = async (req, res) => {
+//     const {  page, limit, sortField, sortOrder, ...filters } = req.query;
 
-    const where = {};
+//     const { skip, take } = getPagination(page, limit);
 
-    if (filters.title) {
-        where.title = { contains: filters.title, mode: 'insensitive' };
-    }
+//     const where = {};
 
-    if (filters.author) {
-        where.author = { contains: filters.author, mode: 'insensitive' };
-    }
+//     if (filters.title) {
+//         where.title = { contains: filters.title, mode: 'insensitive' };
+//     }
 
-    if (filters.categories) {
-        where.categories = {
-            some: {
-                name: { in: filters.categories }
-            }
-        };
-    }
+//     if (filters.author) {
+//         where.author = { contains: filters.author, mode: 'insensitive' };
+//     }
 
-    if (filters.minPrice || filters.maxPrice) {
-        where.price = {};
-        if (filters.minPrice) where.price.gte = parseFloat(filters.minPrice);
-        if (filters.maxPrice) where.price.lte = parseFloat(filters.maxPrice);
-    }
+//     if (filters.categories) {
+//         where.categories = {
+//             some: {
+//                 name: { in: filters.categories }
+//             }
+//         };
+//     }
 
-    if (filters.isAvailableOnline !== undefined) {
-        where.isAvailableOnline = filters.isAvailableOnline;
-    }
+//     if (filters.minPrice || filters.maxPrice) {
+//         where.price = {};
+//         if (filters.minPrice) where.price.gte = parseFloat(filters.minPrice);
+//         if (filters.maxPrice) where.price.lte = parseFloat(filters.maxPrice);
+//     }
 
-    if (filters.search) {
-        where.OR = [
-            { title: { contains: filters.search, mode: 'insensitive' } },
-            { author: { contains: filters.search, mode: 'insensitive' } },
-            { description: { contains: filters.search, mode: 'insensitive' } }
-        ];
-    }
+//     if (filters.isAvailableOnline !== undefined) {
+//         where.isAvailableOnline = filters.isAvailableOnline;
+//     }
 
-    const orderBy = {};
-    orderBy[sortField] = sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc';
+//     if (filters.search) {
+//         where.OR = [
+//             { title: { contains: filters.search, mode: 'insensitive' } },
+//             { author: { contains: filters.search, mode: 'insensitive' } },
+//             { description: { contains: filters.search, mode: 'insensitive' } }
+//         ];
+//     }
 
+//     const orderBy = {};
+//     orderBy[sortField] = sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+//     try {
+//         const [books, totalCount] = await Promise.all([
+//             book.findMany({
+//                 where,
+//                 include: {
+//                     categories: true,
+//                     ratings: {
+//                         select: { rating: true }
+//                     }
+//                 },
+//                 skip,
+//                 take,
+//                 orderBy
+//             }),
+//             book.count({ where })
+//         ]);
+
+//         return {
+//             books,
+//             pagination: {
+//                 total: totalCount,
+//                 page: +page,
+//                 limit: +limit,
+//                 totalPages: Math.ceil(totalCount / limit),
+//             }
+//         };
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json(error);
+//     }
+// };
+const getBooks = async (req,res) => {
     try {
-        const [books, totalCount] = await Promise.all([
-            prisma.book.findMany({
-                where,
-                include: {
-                    categories: true,
-                    ratings: {
-                        select: { rating: true }
-                    }
-                },
-                skip,
-                take,
-                orderBy
-            }),
-            prisma.book.count({ where })
-        ]);
-
-        return {
-            books,
-            pagination: {
-                total: totalCount,
-                page: +page,
-                limit: +limit,
-                totalPages: Math.ceil(totalCount / limit),
-            }
-        };
+        const result = await book.findMany();
+        res.status(200).json(result);
     } catch (error) {
-        throw createError(GENERAL_ERROR, 'Error fetching books');
+        console.error(error);
+        res.status(500).json(error);
     }
-};
+}
 
 //Find book by ID
-const getBookById = async (bookId) => {
+const getBookById = async (req, res) => {
     try {
-        const book = await prisma.book.findUnique({
+        const { bookId } = req.params;
+
+        const foundBook = await book.findUnique({
             where: { bookId: parseInt(bookId) },
             include: {
-                categories: true,
+                categories: {
+                    include: {
+                        category: {     
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                },
                 ratings: {
                     include: {
                         user: {
@@ -120,38 +165,76 @@ const getBookById = async (bookId) => {
             }
         });
 
-        if (!book) {
+        if (!foundBook) {
             throw createError(NOT_FOUND, 'Book not found');
         }
 
-        return book;
+        foundBook.categories = foundBook.categories.map(cat => cat.category.name);
+
+        return res.status(200).json(foundBook);
     } catch (error) {
-        throw error;
+        res.status(400).json(error);
     }
 };
 
 //Update book
-const updateBook = async (bookId, bookData) => {
+const updateBook = async (req, res) => {
     try {
-        const updatedBook = await prisma.book.update({
-            where: { bookId: parseInt(bookId) },
-            data: bookData
-        });
-
-        if (!updatedBook) {
-            throw createError(NOT_FOUND, 'Book not found');
+      const { bookId } = req.params; 
+      const bookData = req.body; 
+      const { categories, ...bookFields } = bookData;
+  
+      //update book
+      const updatedBook = await book.update({
+        where: { bookId: parseInt(bookId) },
+        data: {
+            ...bookFields, 
+            updated_at: getVietnamTime(),
         }
-
-        return updatedBook;
+      });
+  
+      if (!updatedBook) {
+        throw createError(NOT_FOUND, 'Book not found');
+      }
+  
+      //if there is a update for categories
+      if (categories && Array.isArray(categories)) {
+        //delete old ones
+        await bookCategory.deleteMany({
+          where: { bookId: parseInt(bookId) }
+        });
+  
+        //create new categories
+        const newCategories = categories.map(categoryId => ({
+          bookId: parseInt(bookId),
+          categoryId: parseInt(categoryId)
+        }));
+  
+        await bookCategory.createMany({
+          data: newCategories
+        });
+      }
+  
+      return res.status(200).json({ 
+        message: 'Book updated successfully',
+        updatedBook 
+      });
+  
     } catch (error) {
-        throw createError(GENERAL_ERROR, 'Error updating book');
+      console.error(error);
+      res.status(400).json(error);
     }
-};
+  };
+  
 
 //Delete book
-const deleteBook = async (bookId) => {
+const deleteBook = async (req, res) => {
     try {
-        const deletedBook = await prisma.book.delete({
+        const { bookId } = req.params; 
+
+        console.log("Start deleting book:", bookId);
+
+        const deletedBook = await book.delete({
             where: { bookId: parseInt(bookId) }
         });
 
@@ -159,39 +242,71 @@ const deleteBook = async (bookId) => {
             throw createError(NOT_FOUND, 'Book not found');
         }
 
-        return deletedBook;
+        return res.status(200).json(deletedBook);
+
     } catch (error) {
-        throw createError(GENERAL_ERROR, 'Error deleting book');
+        console.error(error);
+        res.status(400).json(error);
     }
 };
 
 //Add rating
-const addRating = async (bookId, userId, rating, review) => {
+const addRating = async (req, res) => {
     try {
-        const existingRating = await prisma.rating.findFirst({
-            where: {
-                bookId: parseInt(bookId),
-                userId: parseInt(userId)
-            }
-        });
-
-        if (existingRating) {
-            return await prisma.rating.update({
-                where: { ratingId: existingRating.ratingId },
-                data: { rating, review }
-            });
-        } else {
-            return await prisma.rating.create({
-                data: {
-                    book: { connect: { bookId: parseInt(bookId) } },
-                    user: { connect: { userId: parseInt(userId) } },
-                    rating,
-                    review
-                }
-            });
+      const { bookId } = req.params; 
+      const { userId, rating, review } = req.body;
+  
+      const parsedBookId = parseInt(bookId);
+      const parsedUserId = parseInt(userId);
+  
+      const existingRating = await prisma.rating.findFirst({
+        where: {
+          bookId: parsedBookId,
+          userId: parsedUserId
         }
+      });
+  
+      let result;
+      if (existingRating) {
+        result = await prisma.rating.update({
+          where: { ratingId: existingRating.ratingId },
+          data: { 
+            rating, 
+            review,
+            updated_at: getVietnamTime(),  
+        }
+        });
+      } else {
+        result = await prisma.rating.create({
+          data: {
+            book: { connect: { bookId: parsedBookId } },
+            user: { connect: { userId: parsedUserId } },
+            rating,
+            review,
+            created_at: getVietnamTime(),
+            updated_at: getVietnamTime(),
+          }
+        });
+      }
+  
+      res.status(200).json(result);
     } catch (error) {
-        throw createError(GENERAL_ERROR, 'Error adding rating');
+      console.error("Error adding rating:", error);
+      res.status(400).json({ error: error.message });
+    }
+};
+  
+
+//Create categories => Categories table
+const createCategory = async (req, res) => {
+    try {
+
+
+        const { name } = req.body;
+
+        return await category.create( name );
+    } catch (error) {
+        throw createError(GENERAL_ERROR, 'Error creating category');
     }
 };
 
@@ -201,5 +316,6 @@ module.exports = {
     getBookById,
     updateBook,
     deleteBook,
-    addRating
+    addRating,
+    createCategory
 };

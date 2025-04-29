@@ -3,24 +3,27 @@ const router = express.Router();
 const { authenticate, optionalAuth } = require('../middlewares/auth.middleware');
 const { isAdmin, isMember } = require('../middlewares/role.middleware');
 
-const { create,
-    getAll,
-    getById,
+const { 
+    createBook,
+    getBooks,
+    getBookById,
     updateBook,
     deleteBook,
-    addRating 
-} = require('../controllers/book.controller');
+    addRating,
+    createCategory
+} = require('../services/book.service');
 
 //public routes
-router.get('/', getAll);
-router.get('/:bookId', getById)
+router.get('/', getBooks); //
+router.get('/:bookId', getBookById) //
 
 //require login
-router.post('/:bookId/rating', authenticate, addRating);
+router.post('/:bookId/rating', authenticate, addRating); //
 
 //routes only for admin
-router.put('/:bookId', authenticate, isAdmin, updateBook);
-router.delete('/:bookId', authenticate, isAdmin, deleteBook);
-router.post('/', authenticate, isAdmin, create)
+router.put('/:bookId', authenticate, isAdmin, updateBook); //
+router.delete('/:bookId', authenticate, isAdmin, deleteBook); //
+router.post('/', authenticate, isAdmin, createBook); //
+router.post('/categories', authenticate, isAdmin, createCategory); //
 
 module.exports = router;

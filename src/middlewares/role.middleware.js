@@ -7,7 +7,7 @@ const isAdmin = (req, res, next) => {
       });
     }
     
-    // Kiểm tra vai trò
+    //check role
     if (req.user.role !== 'ADMIN') {
       return res.status(403).json({
         success: false,

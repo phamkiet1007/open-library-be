@@ -8,12 +8,11 @@ const { user } = new PrismaClient({
 });
 
 const createAccessToken = (payload) => {
-    console.log(payload);
-    return jwt.sign({payload}, process.env.JWT_SECRET, {
+    return jwt.sign(payload, process.env.JWT_SECRET, {
         algorithm: process.env.HASH_ALGORITHM,
-        expiresIn: process.env.JWT_TTL,
-    })
-}
+        expiresIn: "1h",
+    });
+};
 
 const verifyAccessToken = (accessToken) => {
     try {
@@ -51,8 +50,6 @@ const middlewareToken = async (req, res, next) => {
     req.userId = userId;
     next();
 };
-
-
 
 export {
     createAccessToken,

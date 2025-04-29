@@ -3,11 +3,11 @@ require('dotenv').config();
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { prisma } = require('../configs/supabase_db');
 const { createAccessToken } = require('../helpers/jwt.helper');
 const { sendConfirmationMail } = require('../utils/send_email.utils');
 const { getVietnamTime } = require('../utils/date.utils');
-
+const { prisma } = require('../configs/supabase_db');
+const { generateVerificationToken } = require("../utils/generate_token.utils");
 
 
 const user = prisma.user;
@@ -26,18 +26,11 @@ const {
 
 const SALT_ROUNDS = 10;
 
-/*Create verification-token function*/
-const generateVerificationToken = () => {
-  //create random token with 6 chars
-  return crypto.randomBytes(3).toString('hex').toUpperCase();
-};
-
 
 /*Register function */
-const register = async (body) => {
-  console.log('BODY RECEIVED IN SERVICE:', body);
+const register = async (req, res) => {
     try {
-      const { username, email, password, address } = body;
+      const { username, email, password, address } = req.body;
 
       if (!username || !email || !password || !address) {
         throw createError({ 
@@ -108,8 +101,10 @@ const register = async (body) => {
   
 
 /*Verify email function */
-const verifyEmail = async (token, email) => {
+const verifyEmail = async (req, res) => {
   try {
+    const { token, email } = req.body;
+
     if (!token || !email) {
       throw createError({
         status: BAD_REQUEST,
@@ -165,6 +160,9 @@ const verifyEmail = async (token, email) => {
       message: 'Email verification successful',
       user: updatedUser
     };
+
+    res.json({ ok: true, message: "Verification successfully"});
+
   } catch (error) {
     console.error('Verify email error:', error);
     throw createError({ status: GENERAL_ERROR, message: error.message });
@@ -172,8 +170,9 @@ const verifyEmail = async (token, email) => {
 };
 
 /*Resend email function */
-const resendVerificationEmail = async (email) => {
+const resendVerificationEmail = async (req, res) => {
   try {
+    const { email } = req.body;
     if (!email) {
       throw createError({
         status: BAD_REQUEST,
@@ -218,9 +217,12 @@ const resendVerificationEmail = async (email) => {
     //resend
     await sendConfirmationMail(verificationToken, foundUser.username, foundUser.email);
 
-    return {
-      message: 'Verification email sent successfully'
-    };
+    // return {
+    //   message: 'Verification email sent successfully'
+    // };
+
+    res.json({ ok: true, message: "Verification email sent successfully"});
+
   } catch (error) {
     console.error('Resend verification error:', error);
     throw createError({ status: GENERAL_ERROR, message: error.message });
@@ -230,9 +232,9 @@ const resendVerificationEmail = async (email) => {
 
 
 /*Login function */
-const login = async (body) => {
+const login = async (req, res) => {
   try {
-    const { email, password } = body; 
+    const { email, password } = req.body; 
   
     if (!email || !password) {
       throw createError({ 
@@ -280,15 +282,7 @@ const login = async (body) => {
     const token = createAccessToken(payload);
   
     //Return token + user info
-    return{
-      token,
-      user: {
-        userId: foundUser.userId,
-        username: foundUser.username,
-        email: foundUser.email,
-        address: foundUser.address,
-      },
-    };
+    res.json(token);
   
   } catch (error) {
     throw createError({

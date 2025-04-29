@@ -78,8 +78,8 @@ model BookCategory {
   bookId      Int
   categoryId  Int
   
-  book        Book     @relation(fields: [bookId], references: [bookId])
-  category    Category @relation(fields: [categoryId], references: [categoryId])
+  book        Book     @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
+  category    Category @relation(fields: [categoryId], references: [categoryId], onDelete: Cascade) 
   
   @@id([bookId, categoryId])
 }
@@ -97,9 +97,10 @@ model Rating {
   rating       Float    
   review       String?
   created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt 
   
-  book         Book     @relation(fields: [bookId], references: [bookId])
-  user         User     @relation(fields: [userId], references: [userId])
+  book         Book     @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
   
   @@unique([bookId, userId]) // Mỗi user chỉ có thể đánh giá một sách một lần
 }
@@ -111,7 +112,7 @@ model Order {
   total_amount Float
   status      String
 
-  user        User      @relation(fields: [userId], references: [userId])
+  user        User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
   orderItems  OrderItem[]
   payments    Payment[]
 }
@@ -123,8 +124,8 @@ model OrderItem {
   quantity      Int
   price_per_unit Float
 
-  order         Order   @relation(fields: [orderId], references: [orderId])
-  book          Book    @relation(fields: [bookId], references: [bookId])
+  order         Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  book          Book    @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
 }
 
 model Payment {
@@ -135,5 +136,5 @@ model Payment {
   payment_method  String
   transaction_id  String   @unique
 
-  order           Order    @relation(fields: [orderId], references: [orderId])
+  order           Order    @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
 }

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const {user} = new PrismaClient();
 
 const authenticate = async (req, res, next) => {
   try {
@@ -19,12 +19,17 @@ const authenticate = async (req, res, next) => {
     //verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
+    //check
+    console.log('Decoded token:', decoded);
+    console.log('Trying to find user with ID:', decoded.userId);
+
+
     //check for exist user
-    const user = await prisma.user.findUnique({
+    const existUser = await user.findUnique({
       where: { userId: decoded.userId }
     });
     
-    if (!user) {
+    if (!existUser) {
       return res.status(401).json({
         success: false,
         message: 'Non-exist user'
@@ -33,10 +38,10 @@ const authenticate = async (req, res, next) => {
     
     
     req.user = {
-      userId: user.userId,
-      username: user.username,
-      email: user.email,
-      role: user.role
+      userId: existUser.userId,
+      username: existUser.username,
+      email: existUser.email,
+      role: existUser.role
     };
 
     next();
@@ -72,16 +77,16 @@ const optionalAuth = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      const user = await prisma.user.findUnique({
+      const existUser = await user.findUnique({
         where: { userId: decoded.userId }
       });
       
-      if (user) {
+      if (existUser) {
         req.user = {
-          userId: user.userId,
-          username: user.username,
-          email: user.email,
-          role: user.role
+          userId: existUser.userId,
+          username: existUser.username,
+          email: existUser.email,
+          role: existUser.role
         };
       }
     } catch (error) {
