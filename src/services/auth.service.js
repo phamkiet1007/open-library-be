@@ -30,7 +30,7 @@ const SALT_ROUNDS = 10;
 /*Register function */
 const register = async (req, res) => {
     try {
-      const { username, email, password, address } = req.body;
+      const { username, email, password, address, role } = req.body;
 
       if (!username || !email || !password || !address) {
         throw createError({ 
@@ -61,8 +61,8 @@ const register = async (req, res) => {
             email,
             password: hashedPassword,
             address,
+            role: role === 'ADMIN' ? 'ADMIN' : 'MEMBER',
             created_at: getVietnamTime(),
-            role: body.role === 'ADMIN' ? 'ADMIN' : 'MEMBER',
         },
         select: {
             userId: true,
@@ -84,12 +84,9 @@ const register = async (req, res) => {
 
       //send confirmation email
       await sendConfirmationMail(verificationToken, newUser.username, newUser.email);
-  
-      //return user's infomation without password
-      return {
-        ...newUser,
-        message: 'Registration successful. Please check your email to verify your account.' 
-      };
+
+      res.json({ ok: true, message: 'Registration successful. Please check your email to verify your account.' });
+
       
     } catch (error) {
       throw createError({
@@ -156,11 +153,6 @@ const verifyEmail = async (req, res) => {
       where: { id: verificationToken.id }
     });
 
-    return {
-      message: 'Email verification successful',
-      user: updatedUser
-    };
-
     res.json({ ok: true, message: "Verification successfully"});
 
   } catch (error) {
@@ -216,10 +208,6 @@ const resendVerificationEmail = async (req, res) => {
 
     //resend
     await sendConfirmationMail(verificationToken, foundUser.username, foundUser.email);
-
-    // return {
-    //   message: 'Verification email sent successfully'
-    // };
 
     res.json({ ok: true, message: "Verification email sent successfully"});
 
