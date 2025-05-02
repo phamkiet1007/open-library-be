@@ -30,7 +30,7 @@ const SALT_ROUNDS = 10;
 /*Register function */
 const register = async (req, res) => {
     try {
-      const { username, email, password, address, role } = req.body;
+      const { username, email, password, firstName, lastName, address, role } = req.body;
 
       if (!username || !email || !password || !address) {
         throw createError({ 
@@ -60,6 +60,8 @@ const register = async (req, res) => {
             username,
             email,
             password: hashedPassword,
+            firstName,
+            lastName,
             address,
             role: role === 'ADMIN' ? 'ADMIN' : 'MEMBER',
             created_at: getVietnamTime(),
@@ -68,6 +70,8 @@ const register = async (req, res) => {
             userId: true,
             username: true,
             email: true,
+            firstName: true,
+            lastName: true,
             address: true,
             role: true,
         },
@@ -78,14 +82,14 @@ const register = async (req, res) => {
         data: {
           token: verificationToken,
           userId: newUser.userId,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), //24h
-      }
-    });
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000), //15mins
+        }
+      });
 
       //send confirmation email
       await sendConfirmationMail(verificationToken, newUser.username, newUser.email);
 
-      res.json({ ok: true, message: 'Registration successful. Please check your email to verify your account.' });
+      res.json({ isRegister: true, message: 'Please check your email to verify your account!' });
 
       
     } catch (error) {
@@ -153,7 +157,7 @@ const verifyEmail = async (req, res) => {
       where: { id: verificationToken.id }
     });
 
-    res.json({ ok: true, message: "Verification successfully"});
+    res.json({ isVerify: true, message: "Verification successfully"});
 
   } catch (error) {
     console.error('Verify email error:', error);
@@ -209,7 +213,7 @@ const resendVerificationEmail = async (req, res) => {
     //resend
     await sendConfirmationMail(verificationToken, foundUser.username, foundUser.email);
 
-    res.json({ ok: true, message: "Verification email sent successfully"});
+    res.json({ isResend: true, message: "Verification email sent successfully"});
 
   } catch (error) {
     console.error('Resend verification error:', error);
@@ -222,17 +226,25 @@ const resendVerificationEmail = async (req, res) => {
 /*Login function */
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body; 
+    const { identifier, password } = req.body; 
   
-    if (!email || !password) {
+    if (!identifier || !password) {
       throw createError({ 
         status: BAD_REQUEST, 
-        message: 'email and password are required' 
+        message: 'Username/Email and Password are required' 
       });
     }
-  
-    //Find user based on email
-    const foundUser = await user.findUnique({ where: { email } });
+
+    const isValidEmail = (value) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(value);
+    };
+
+    const isEmail = isValidEmail(identifier);
+
+    const foundUser = await user.findUnique({
+      where: isEmail ? { email: identifier } : { username: identifier }
+    });
 
     if (!foundUser) {
       throw createError({ 
@@ -269,8 +281,8 @@ const login = async (req, res) => {
     //Create JWT token
     const token = createAccessToken(payload);
   
-    //Return token + user info
-    res.json(token);
+    //Return token
+    res.json({ isLogin: true, token });
   
   } catch (error) {
     throw createError({

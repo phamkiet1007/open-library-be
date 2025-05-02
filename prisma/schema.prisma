@@ -23,6 +23,8 @@ model User {
   username         String   @unique
   email            String   @unique
   password         String
+  firstName        String?                   
+  lastName         String?                  
   address          String
   role             Role     @default(MEMBER)
   created_at       DateTime @default(now())
