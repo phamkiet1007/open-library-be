@@ -78,7 +78,7 @@ const register = async (req, res) => {
         data: {
           token: verificationToken,
           userId: newUser.userId,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), //24h
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000), //15mins
       }
     });
 
