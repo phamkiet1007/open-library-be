@@ -177,6 +177,74 @@ const getBookById = async (req, res) => {
     }
 };
 
+//search book by title and category
+const searchBooks = async (req, res) => {
+    try {
+      const { title, names } = req.query;  //names of categories
+  
+      const filters = {};
+  
+      if (title) {
+        filters.title = {
+          contains: title,
+          mode: 'insensitive',
+        };
+      }
+  
+      if (names && Array.isArray(names)) {
+        filters.categories = {
+          some: {
+            category: {
+              name: {
+                in: names.map(name => name.toLowerCase()),  //"in" to find many values
+                mode: 'insensitive',
+              }
+            }
+          }
+        };
+      }
+      
+      console.log(JSON.stringify(filters, null, 2));
+
+      const books = await prisma.book.findMany({
+        where: filters,
+        include: {
+          categories: {
+            include: {
+              category: {
+                select: { name: true },
+              },
+            },
+          },
+          ratings: {
+            include: {
+              user: {
+                select: {
+                  userId: true,
+                  username: true,
+                },
+              },
+            },
+          },
+        },
+      });
+  
+      const transformedBooks = books.map((b) => ({
+        ...b,
+        categories: b.categories.map((cat) => cat.category.name),
+      }));
+  
+      res.status(200).json(transformedBooks);
+    } catch (error) {
+      console.error(error);
+      res.status(400).json({ error: error.message });
+    }
+};
+
+  
+  
+
+
 //Update book
 const updateBook = async (req, res) => {
     try {
@@ -254,12 +322,12 @@ const deleteBook = async (req, res) => {
 const addRating = async (req, res) => {
     try {
       const { bookId } = req.params; 
-      const { userId, rating, review } = req.body;
+      const { userId, newRating, review } = req.body;
   
       const parsedBookId = parseInt(bookId);
       const parsedUserId = parseInt(userId);
   
-      const existingRating = await prisma.rating.findFirst({
+      const existingRating = await rating.findFirst({
         where: {
           bookId: parsedBookId,
           userId: parsedUserId
@@ -268,16 +336,16 @@ const addRating = async (req, res) => {
   
       let result;
       if (existingRating) {
-        result = await prisma.rating.update({
+        result = await rating.update({
           where: { ratingId: existingRating.ratingId },
           data: { 
-            rating, 
+            newRating, 
             review,
             updated_at: getVietnamTime(),  
         }
         });
       } else {
-        result = await prisma.rating.create({
+        result = await rating.create({
           data: {
             book: { connect: { bookId: parsedBookId } },
             user: { connect: { userId: parsedUserId } },
@@ -314,8 +382,9 @@ module.exports = {
     createBook,
     getBooks,
     getBookById,
+    searchBooks,
     updateBook,
     deleteBook,
     addRating,
-    createCategory
+    createCategory, 
 };

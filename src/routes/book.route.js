@@ -7,6 +7,7 @@ const {
     createBook,
     getBooks,
     getBookById,
+    searchBooks,
     updateBook,
     deleteBook,
     addRating,
@@ -15,7 +16,8 @@ const {
 
 //public routes
 router.get('/', getBooks); //
-router.get('/:bookId', getBookById) //
+router.get('/search', searchBooks); // let static routers stay before the dynamic ones
+router.get('/:bookId', getBookById); //
 
 //require login
 router.post('/:bookId/rating', authenticate, addRating); //
