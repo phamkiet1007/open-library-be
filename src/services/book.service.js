@@ -26,7 +26,7 @@ const createBook = async (req, res) => {
     try {
         const { categories, ...bookData } = req.body;
 
-        const newBook = await prisma.book.create({
+        const newBook = await book.create({
             data: {
                 ...bookData,
                 created_at: getVietnamTime(),
@@ -38,8 +38,7 @@ const createBook = async (req, res) => {
                         }
                     })),
                 },
-            },
-            
+            },         
         });
 
         res.status(201).json(newBook);
@@ -368,13 +367,14 @@ const addRating = async (req, res) => {
 //Create categories => Categories table
 const createCategory = async (req, res) => {
     try {
-
-
         const { name } = req.body;
 
-        return await category.create( name );
+        const newCategory = await category.create( {data: { name }} );
+        res.status(201).json(newCategory);
+
     } catch (error) {
-        throw createError(GENERAL_ERROR, 'Error creating category');
+      console.error("Error adding rating:", error);
+      res.status(400).json({ error: error.message });
     }
 };
 

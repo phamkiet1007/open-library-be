@@ -6,8 +6,10 @@ const jwt = require('jsonwebtoken');
 const { createAccessToken } = require('../helpers/jwt.helper');
 const { sendConfirmationMail } = require('../utils/send_email.utils');
 const { getVietnamTime } = require('../utils/date.utils');
-const { prisma } = require('../configs/supabase_db');
 const { generateVerificationToken } = require("../utils/generate_token.utils");
+
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 
 const user = prisma.user;
