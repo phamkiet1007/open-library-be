@@ -23,7 +23,7 @@ router.get('/:bookId', getBookById); //
 router.post('/:bookId/rating', authenticate, addRating); //
 
 //routes only for admin
-router.put('/:bookId', authenticate, isAdmin, updateBook); //
+router.patch('/:bookId', authenticate, isAdmin, updateBook); //
 router.delete('/:bookId', authenticate, isAdmin, deleteBook); //
 router.post('/', authenticate, isAdmin, createBook); //
 router.post('/categories', authenticate, isAdmin, createCategory); //

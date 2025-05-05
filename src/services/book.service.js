@@ -292,7 +292,7 @@ const updateBook = async (req, res) => {
       console.error(error);
       res.status(400).json(error);
     }
-  };
+};
   
 
 //Delete book
