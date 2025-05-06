@@ -170,7 +170,7 @@ const getBookById = async (req, res) => {
 
         foundBook.categories = foundBook.categories.map(cat => cat.category.name);
 
-        return res.status(200).json(foundBook);
+        res.status(200).json(foundBook);
     } catch (error) {
         res.status(400).json(error);
     }
