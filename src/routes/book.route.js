@@ -11,7 +11,8 @@ const {
     updateBook,
     deleteBook,
     addRating,
-    createCategory
+    createCategory,
+    getCategories
 } = require('../services/book.service');
 
 //public routes

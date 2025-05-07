@@ -19,20 +19,21 @@ model VerificationToken {
 }
 
 model User {
-  userId           Int      @id @default(autoincrement())
-  username         String   @unique
-  email            String   @unique
-  password         String
-  firstName        String?                   
-  lastName         String?                  
-  address          String
-  role             Role     @default(MEMBER)
-  created_at       DateTime @default(now())
+  userId             Int                     @id @default(autoincrement())
+  username           String                  @unique
+  email              String                  @unique
+  password           String
+  firstName          String?                   
+  lastName           String?                  
+  address            String
+  role               Role                    @default(MEMBER)
+  created_at         DateTime                @default(now())
   email_verification EmailVerificationStatus @default(NOT_VERIFIED)
-  verificationToken VerificationToken[]
+  verificationToken  VerificationToken[]
   // Các quan hệ ngược lại
-  ratings   Rating[]
-  orders    Order[]
+  ratings            Rating[]
+  orders             Order[]
+  cart               Cart?                   // Add relation to Cart
 }
 
 enum Role {
@@ -46,27 +47,28 @@ enum EmailVerificationStatus {
 }
 
 model Book {
-  bookId            Int       @id @default(autoincrement())
-  title             String
-  author            String
-  price             Float
+  bookId             Int           @id @default(autoincrement())
+  title              String
+  author             String
+  price              Float
   quantity_available Int
-  description       String?
-  coverImage        String?
-  publisher         String?
-  publishDate       DateTime?
-  isbn              String?   @unique
-  format            BookFormat @default(PAPERBACK)
-  filePath          String?   
-  previewPages      Int?      @default(20)
-  isAvailableOnline Boolean   @default(false)
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  description        String?
+  coverImage         String?
+  publisher          String?
+  publishDate        DateTime?
+  isbn               String?       @unique
+  format             BookFormat    @default(PAPERBACK)
+  filePath           String?   
+  previewPages       Int?          @default(20)
+  isAvailableOnline  Boolean       @default(false)
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
 
   // Relationships
-  categories        BookCategory[]
-  orderItems        OrderItem[]
-  ratings           Rating[]
+  categories         BookCategory[]
+  orderItems         OrderItem[]
+  ratings            Rating[]
+  cartItems          CartItem[]    // Add relation to CartItem
 }
 
 model Category {
@@ -108,26 +110,26 @@ model Rating {
 }
 
 model Order {
-  orderId     Int       @id @default(autoincrement())
-  userId      Int
-  order_date  DateTime  @default(now())
+  orderId      Int        @id @default(autoincrement())
+  userId       Int
+  order_date   DateTime   @default(now())
   total_amount Float
-  status      String
+  status       String
 
-  user        User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  orderItems  OrderItem[]
-  payments    Payment[]
+  user         User       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  orderItems   OrderItem[]
+  payments     Payment[]
 }
 
 model OrderItem {
-  orderItemId   Int     @id @default(autoincrement())
-  orderId       Int
-  bookId        Int
-  quantity      Int
+  orderItemId    Int     @id @default(autoincrement())
+  orderId        Int
+  bookId         Int
+  quantity       Int
   price_per_unit Float
 
-  order         Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
-  book          Book    @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
+  order          Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  book           Book    @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
 }
 
 model Payment {
@@ -139,4 +141,25 @@ model Payment {
   transaction_id  String   @unique
 
   order           Order    @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+}
+
+// Add Cart models
+model Cart {
+  cartId     Int        @id @default(autoincrement())
+  userId     Int        @unique
+  user       User       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  items      CartItem[]
+  updatedAt  DateTime   @updatedAt
+}
+
+model CartItem {
+  cartItemId Int       @id @default(autoincrement())
+  cartId     Int
+  bookId     Int
+  quantity   Int
+  
+  cart       Cart      @relation(fields: [cartId], references: [cartId], onDelete: Cascade)
+  book       Book      @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
+  
+  @@unique([cartId, bookId]) // mỗi sách chỉ xuất hiện 1 lần trong 1 giỏ hàng
 }
