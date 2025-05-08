@@ -179,13 +179,27 @@ const getBookById = async (req, res) => {
 //search book by title and category
 const searchBooks = async (req, res) => {
     try {
-      const { title, names } = req.query;  //names of categories
+      const { title, names, author, publisher } = req.query;  //names of categories
   
       const filters = {};
   
       if (title) {
         filters.title = {
           contains: title,
+          mode: 'insensitive',
+        };
+      }
+
+      if (author) {
+        filters.author = {
+          contains: author,
+          mode: 'insensitive',
+        };
+      }
+  
+      if (publisher) {
+        filters.publisher = {
+          contains: publisher,
           mode: 'insensitive',
         };
       }
@@ -203,9 +217,9 @@ const searchBooks = async (req, res) => {
         };
       }
       
-      console.log(JSON.stringify(filters, null, 2));
+      console.log(JSON.stringify(filters, null, 2)); //debug
 
-      const books = await prisma.book.findMany({
+      const books = await book.findMany({
         where: filters,
         include: {
           categories: {
@@ -231,7 +245,7 @@ const searchBooks = async (req, res) => {
       const transformedBooks = books.map((b) => ({
         ...b,
         categories: b.categories.map((cat) => cat.category.name),
-      }));
+      })); //format for pretty-view categories
   
       res.status(200).json(transformedBooks);
     } catch (error) {
@@ -241,8 +255,6 @@ const searchBooks = async (req, res) => {
 };
 
   
-  
-
 
 //Update book
 const updateBook = async (req, res) => {
