@@ -4,6 +4,7 @@ const { authenticate, optionalAuth } = require('../middlewares/auth.middleware')
 const { isAdmin, isMember } = require('../middlewares/role.middleware');
 
 const { 
+    upload,
     createBook,
     getBooks,
     getBookById,
@@ -17,6 +18,7 @@ const {
 
 //public routes
 router.get('/', getBooks); //
+router.get('/categories', getCategories); //
 router.get('/search', searchBooks); // let static routers stay before the dynamic ones
 router.get('/:bookId', getBookById); //
 
@@ -24,7 +26,8 @@ router.get('/:bookId', getBookById); //
 router.post('/:bookId/rating', authenticate, addRating); //
 
 //routes only for admin
-router.post('/create', authenticate, isAdmin, createBook); //
+router.post('/create', authenticate, isAdmin, upload, createBook); //
+
 router.post('/create-categories', authenticate, isAdmin, createCategory); //
 router.patch('/update/:bookId', authenticate, isAdmin, updateBook); //
 router.delete('/delete/:bookId', authenticate, isAdmin, deleteBook); //

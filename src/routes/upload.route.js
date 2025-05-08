@@ -6,6 +6,8 @@ const router = express.Router()
 const { authenticate, optionalAuth } = require('../middlewares/auth.middleware');
 const { isAdmin, isMember } = require('../middlewares/role.middleware');
 
+const { getVietnamTime } = require('../utils/date.utils');
+
 
 
 const storage = multer.memoryStorage()
@@ -14,7 +16,7 @@ const upload = multer({ storage })
 router.post('/', authenticate, isAdmin, upload.single('file'), async (req, res) => {
   try {
     const file = req.file
-    const fileName = `${Date.now()}-${file.originalname}`
+    const fileName = `${getVietnamTime}-${file.originalname}`
 
     const { data, error } = await supabase.storage
       .from('books-pdf') //bucket-name

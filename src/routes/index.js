@@ -7,7 +7,7 @@ const authRoutes = require('./auth.route');
 const bookRoutes = require('./book.route');
 const cartRoutes = require('./cart.route');
 
-router.use('/upload', uploadRoute);
+router.use('/upload-book', uploadRoute);
 
 router.use('/auth', authRoutes);
 router.use('/books', bookRoutes);

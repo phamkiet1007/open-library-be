@@ -1,5 +1,8 @@
 const { getVietnamTime } = require('../utils/date.utils');
 
+const multer = require('multer')
+const supabase = require('../configs/supabaseClient')
+
 const { PrismaClient } = require('@prisma/client');
 const { book, rating, category, bookCategory } = new PrismaClient({
     log: ["query", "info", "warn", "error"]
@@ -21,32 +24,134 @@ const getPagination = (page, limit) => {
     return { skip, take };
 };
 
-//Create book
-const createBook = async (req, res) => {
-    try {
-        const { categories, ...bookData } = req.body;
+// Upload files to Supabase Storage
+const uploadFile = async (file, folderName) => {
+  const fileName = `${getVietnamTime()}-${file.originalname}`;
+  const { data, error } = await supabase.storage
+    .from(folderName)
+    .upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+      upsert: true
+    });
 
-        const newBook = await book.create({
-            data: {
-                ...bookData,
-                created_at: getVietnamTime(),
-                updated_at: getVietnamTime(),
-                categories: {
-                    create: categories.map((categoryId) => ({
-                        category: {
-                            connect: { categoryId }
-                        }
-                    })),
-                },
-            },         
-        });
+  if (error) throw new Error(error.message);
 
-        res.status(201).json(newBook);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json(error);
-    }
+  const { data: publicUrlData } = supabase.storage
+    .from(folderName)
+    .getPublicUrl(fileName);
+
+  return publicUrlData.publicUrl;
 };
+
+// Configure multer for file uploads (memory storage)
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage,
+}).fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'coverImage', maxCount: 1 }
+]);
+
+
+// Create Book
+const createBook = async (req, res) => {
+  try {
+    if (!req.files) {
+      return res.status(400).json({ error: 'No files have been uploaded' });
+    }
+
+    console.log('BODY:', req.body);
+    console.log('FILES:', req.files);
+
+    let pdfUrl = null;
+    let coverImageUrl = null;
+
+    //file PDF
+    if (req.files.file && req.files.file[0]) {
+      pdfUrl = await uploadFile(req.files.file[0], 'books-pdf');
+    } else {
+      return res.status(400).json({ error: 'Missing bookPDF' });
+    }
+
+    //coverImg
+    if (req.files.coverImage && req.files.coverImage[0]) {
+      coverImageUrl = await uploadFile(req.files.coverImage[0], 'books-covers');
+    } else {
+      return res.status(400).json({ error: 'Missing coverImg' });
+    }
+
+    //make the body clean before saving
+    const cleanedBody = {
+      title: req.body.title?.trim().replace(/^"|"$/g, ''),
+      author: req.body.author?.trim().replace(/^"|"$/g, ''),
+      price: parseFloat(req.body.price),
+      quantity_available: parseInt(req.body.quantity_available),
+      description: req.body.description?.trim().replace(/^"|"$/g, ''),
+      publisher: req.body.publisher?.trim().replace(/^"|"$/g, ''),
+      publishDate: new Date(req.body.publishDate?.trim().replace(/^"|"$/g, '')),
+      isbn: req.body.isbn?.trim().replace(/^"|"$/g, ''),
+      format: req.body.format?.trim().replace(/^"|"$/g, ''),
+      previewPages: parseInt(req.body.previewPages),
+      isAvailableOnline: req.body.isAvailableOnline?.toLowerCase() === "true",
+      coverImage: coverImageUrl,  
+      filePath: pdfUrl,           
+    };
+
+    //Parse list categoryId
+    const categoryIds = req.body.categories
+      ?.trim()
+      .replace(/^"|"$/g, '')
+      .split(',')
+      .map(id => parseInt(id.trim()))
+      .filter(id => !isNaN(id));
+
+    //check for required field
+    if (!cleanedBody.title) {
+      return res.status(400).json({ error: 'Book-title missing' });
+    }
+
+    //create new book and save
+    const newBook = await book.create({
+      data: {
+        ...cleanedBody,
+        created_at: getVietnamTime(),
+        updated_at: getVietnamTime(),
+        categories: {
+          create: categoryIds.map(id => ({
+            category: { connect: { categoryId: id } }
+          }))
+        },
+      },
+      include: {
+        categories: true
+      }
+    });
+    
+    res.status(201).json(newBook);
+  } catch (error) {
+    console.error('error details:', error);
+    
+    if (error.code === 'P2002') {
+      return res.status(400).json({ 
+        error: 'Violation of uniqueness constraint', 
+        field: error.meta?.target 
+      });
+    }
+    
+    if (error.code === 'P2003') {
+      return res.status(400).json({ 
+        error: 'foreign key constraint violation', 
+        field: error.meta?.field_name 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Can not create !', 
+      message: error.message
+    });
+  }
+};
+
 
 //Get all books
 // const getBooks = async (req, res) => {
@@ -390,8 +495,18 @@ const createCategory = async (req, res) => {
     }
 };
 
+const getCategories = async (req,res) => {
+  try {
+      const result = await category.findMany();
+      res.status(200).json(result);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json(error);
+  }
+}
 
 module.exports = {
+    upload,
     createBook,
     getBooks,
     getBookById,
@@ -400,4 +515,5 @@ module.exports = {
     deleteBook,
     addRating,
     createCategory, 
+    getCategories
 };
