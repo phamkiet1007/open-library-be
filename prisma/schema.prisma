@@ -52,13 +52,13 @@ model Book {
   author             String
   price              Float
   quantity_available Int
-  description        String?
-  coverImage         String?
-  publisher          String?
-  publishDate        DateTime?
-  isbn               String?       @unique
+  description        String
+  coverImage         String
+  publisher          String
+  publishDate        DateTime
+  isbn               String       @unique
   format             BookFormat    @default(PAPERBACK)
-  filePath           String?   
+  filePath           String   
   previewPages       Int?          @default(20)
   isAvailableOnline  Boolean       @default(false)
   created_at         DateTime      @default(now())
