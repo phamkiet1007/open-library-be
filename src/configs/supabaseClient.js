@@ -1,3 +1,5 @@
+//this config used to link db with supabase & supabase storage
+
 const { createClient } = require('@supabase/supabase-js')
 
 const supabase = createClient(
