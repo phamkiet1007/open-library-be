@@ -358,13 +358,55 @@ const searchBooks = async (req, res) => {
 };
 
 //Update book
+//Update book
 const updateBook = async (req, res) => {
   try {
     const { bookId } = req.params;
-    const bookData = req.body;
-    const { categories, ...bookFields } = bookData;
 
-    //update book
+    console.log("Update book request:", {
+      body: req.body,
+      files: req.files ? Object.keys(req.files) : "No files",
+    });
+
+    // Parse and clean the data
+    const bookFields = {
+      title: req.body.title?.trim().replace(/^"|"$/g, ""),
+      author: req.body.author?.trim().replace(/^"|"$/g, ""),
+      description: req.body.description?.trim().replace(/^"|"$/g, ""),
+      publisher: req.body.publisher?.trim().replace(/^"|"$/g, ""),
+      isbn: req.body.isbn?.trim().replace(/^"|"$/g, ""),
+      format: req.body.format?.trim().replace(/^"|"$/g, ""),
+    };
+
+    // Parse numeric fields
+    if (req.body.price) bookFields.price = parseFloat(req.body.price);
+    if (req.body.quantity_available)
+      bookFields.quantity_available = parseInt(req.body.quantity_available);
+    if (req.body.previewPages)
+      bookFields.previewPages = parseInt(req.body.previewPages);
+
+    // Parse boolean fields
+    if (req.body.isAvailableOnline !== undefined) {
+      bookFields.isAvailableOnline =
+        req.body.isAvailableOnline?.toLowerCase() === "true";
+    }
+
+    // Parse date fields
+    if (req.body.publishDate) {
+      bookFields.publishDate = new Date(
+        req.body.publishDate.trim().replace(/^"|"$/g, "")
+      );
+    }
+
+    // Parse categories
+    const categoryIds = req.body.categories
+      ?.trim()
+      .replace(/^"|"$/g, "")
+      .split(",")
+      .map((id) => parseInt(id.trim()))
+      .filter((id) => !isNaN(id));
+
+    // Update book basic information
     const updatedBook = await book.update({
       where: { bookId: parseInt(bookId) },
       data: {
@@ -377,15 +419,39 @@ const updateBook = async (req, res) => {
       throw createError(NOT_FOUND, "Book not found");
     }
 
-    //if there is a update for categories
-    if (categories && Array.isArray(categories)) {
-      //delete old ones
+    // Handle file uploads if present
+    if (req.files) {
+      // Process PDF file if uploaded
+      if (req.files.file && req.files.file[0]) {
+        const pdfUrl = await uploadFile(req.files.file[0], "books-pdf");
+        await book.update({
+          where: { bookId: parseInt(bookId) },
+          data: { filePath: pdfUrl },
+        });
+      }
+
+      // Process cover image if uploaded
+      if (req.files.coverImage && req.files.coverImage[0]) {
+        const coverImageUrl = await uploadFile(
+          req.files.coverImage[0],
+          "books-covers"
+        );
+        await book.update({
+          where: { bookId: parseInt(bookId) },
+          data: { coverImage: coverImageUrl },
+        });
+      }
+    }
+
+    // Update book categories if provided
+    if (categoryIds && categoryIds.length > 0) {
+      // Delete old category relationships
       await bookCategory.deleteMany({
         where: { bookId: parseInt(bookId) },
       });
 
-      //create new categories
-      const newCategories = categories.map((categoryId) => ({
+      // Create new category relationships
+      const newCategories = categoryIds.map((categoryId) => ({
         bookId: parseInt(bookId),
         categoryId: parseInt(categoryId),
       }));
@@ -400,8 +466,8 @@ const updateBook = async (req, res) => {
       updatedBook,
     });
   } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
+    console.error("Error updating book:", error);
+    res.status(400).json({ error: error.message });
   }
 };
 
