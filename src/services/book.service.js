@@ -455,7 +455,7 @@ const addRating = async (req, res) => {
         result = await rating.update({
           where: { ratingId: existingRating.ratingId },
           data: { 
-            newRating, 
+            rating: newRating,
             review,
             updated_at: getVietnamTime(),  
         }
@@ -465,7 +465,7 @@ const addRating = async (req, res) => {
           data: {
             book: { connect: { bookId: parsedBookId } },
             user: { connect: { userId: parsedUserId } },
-            rating,
+            rating: newRating,
             review,
             created_at: getVietnamTime(),
             updated_at: getVietnamTime(),
