@@ -255,7 +255,6 @@ const getBooks = async (req, res) => {
     res.status(500).json(error);
   }
 };
-
 //Find book by ID
 const getBookById = async (req, res) => {
   try {
