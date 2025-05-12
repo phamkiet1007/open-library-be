@@ -229,14 +229,32 @@ const createBook = async (req, res) => {
 // };
 const getBooks = async (req, res) => {
   try {
-    const result = await book.findMany();
-    res.status(200).json(result);
+    const result = await book.findMany({
+      include: {
+        categories: {
+          include: {
+            category: {
+              select: {
+                name: true,
+                categoryId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const transformedBooks = result.map((b) => ({
+      ...b,
+      categories: b.categories.map((cat) => cat.category.name),
+    }));
+
+    res.status(200).json(transformedBooks);
   } catch (error) {
     console.error(error);
     res.status(500).json(error);
   }
 };
-
 //Find book by ID
 const getBookById = async (req, res) => {
   try {
