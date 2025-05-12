@@ -229,8 +229,27 @@ const createBook = async (req, res) => {
 // };
 const getBooks = async (req, res) => {
   try {
-    const result = await book.findMany();
-    res.status(200).json(result);
+    const result = await book.findMany({
+      include: {
+        categories: {
+          include: {
+            category: {
+              select: {
+                name: true,
+                categoryId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const transformedBooks = result.map((b) => ({
+      ...b,
+      categories: b.categories.map((cat) => cat.category.name),
+    }));
+
+    res.status(200).json(transformedBooks);
   } catch (error) {
     console.error(error);
     res.status(500).json(error);
@@ -271,13 +290,31 @@ const getBookById = async (req, res) => {
       throw createError(NOT_FOUND, "Book not found");
     }
 
-    foundBook.categories = foundBook.categories.map((cat) => cat.category.name);
+    //return categories with array format
+    const formattedCategories = foundBook.categories.map((cat) => cat.category.name);
 
-    res.status(200).json(foundBook);
+    // Format ratings 
+    const formattedRatings = foundBook.ratings.map((rating) => ({
+      ratingId: rating.ratingId,
+      score: rating.score,
+      comment: rating.comment,
+      createdAt: rating.created_at,
+      user: rating.user,
+    }));
+
+    res.status(200).json({
+      ...foundBook,
+      categories: formattedCategories,
+      ratings: formattedRatings,
+      coverImage: foundBook.coverImage, 
+      filePath: foundBook.filePath,     
+    });
   } catch (error) {
+    console.error(error);
     res.status(400).json(error);
   }
 };
+
 
 //search book by title and category
 const searchBooks = async (req, res) => {
