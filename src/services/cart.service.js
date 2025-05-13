@@ -7,49 +7,110 @@ const { cart, cartItem } = new PrismaClient({
 });;
 
 const getCart = async (req, res) => {
-    try {
-      const userId = req.user.userId;
-      const foundCart = await cart.findUnique({
-        where: { userId },
-        include: {
-          items: {
-            include: { book: true },
-          },
-        },
-      });
-  
-      if (!foundCart) {
-        return res.status(200).json({
-          cartId: null,
-          items: [],
-          totalQuantity: 0,
-          totalPrice: 0
+  try {
+    const userId = req.user.userId;
+    
+    //retry if there are troubles with connection
+    let retries = 3;
+    let foundCart = null;
+    
+    while (retries > 0 && foundCart === null) {
+      try {
+        console.time("getCart Prisma query");
+        
+        foundCart = await cart.findUnique({
+          where: { userId },
+          select: {
+            cartId: true,
+            items: {
+              select: {
+                quantity: true,
+                book: {
+                  select: {
+                    bookId: true,
+                    title: true,
+                    price: true,
+                    coverImage: true
+                  }
+                }
+              }
+            }
+          }
         });
+        console.timeEnd("getCart Prisma query");
+        break; //break the loop if query successfully
+      } catch (queryError) {
+        retries--;
+        if (retries === 0) res.status(400).json(queryError) ; //no more retry
+        
+        console.warn(`Retry (still ${retries} times)...`);
+        //wait a while before retry
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
-  
-      const transformedItems = foundCart.items.map((item) => ({
-        bookId: item.bookId,
-        quantity: item.quantity,
-        title: item.book.title,
-        price: item.book.price,
-        coverImage: item.book.coverImage,
-      }));
-  
-      const totalQuantity = foundCart.items.reduce((sum, item) => sum + item.quantity, 0);
-      const totalPrice = foundCart.items.reduce(
-        (sum, item) => sum + item.quantity * item.book.price,
-        0);
-  
-      res.status(200).json({
-        cartId: foundCart.cartId,
-        items: transformedItems,
-        totalQuantity,
-        totalPrice
-      });
-    } catch (error) {
-      res.status(400).json(error);
     }
-  };
+
+    // Xử lý trường hợp không tìm thấy giỏ hàng
+    if (!foundCart) {
+      return res.status(200).json({
+        cartId: null,
+        items: [],
+        totalQuantity: 0,
+        totalPrice: 0
+      });
+    }
+
+    // Sử dụng reduce một lần duy nhất để tính cả totalQuantity và totalPrice
+    const { items, totalQuantity, totalPrice } = foundCart.items.reduce(
+      (acc, { book, quantity }) => {
+        acc.items.push({
+          bookId: book.bookId,
+          title: book.title,
+          price: book.price,
+          coverImage: book.coverImage,
+          quantity
+        });
+        acc.totalQuantity += quantity;
+        acc.totalPrice += quantity * book.price;
+        return acc;
+      },
+      { items: [], totalQuantity: 0, totalPrice: 0 }
+    );
+
+    // Sử dụng cache control để tối ưu performance
+    res.setHeader('Cache-Control', 'private, max-age=10'); // Cache 10 giây ở client
+    
+    return res.status(200).json({
+      cartId: foundCart.cartId,
+      items,
+      totalQuantity,
+      totalPrice
+    });
+
+  } catch (error) {
+    console.error("Error in getCart:", error);
+    
+    // Phân loại lỗi để trả về thông báo phù hợp
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        success: false, 
+        message: "Xung đột dữ liệu giỏ hàng" 
+      });
+    }
+    
+    if (error.message.includes("Can't reach database server")) {
+      return res.status(503).json({ 
+        success: false, 
+        message: "Không thể kết nối đến cơ sở dữ liệu, vui lòng thử lại sau" 
+      });
+    }
+
+    return res.status(500).json({ 
+      success: false, 
+      message: "Lỗi máy chủ khi lấy thông tin giỏ hàng" 
+    });
+  }
+};
+
   
 
 const addToCart = async (req, res) => {
@@ -57,88 +118,85 @@ const addToCart = async (req, res) => {
         const userId = req.user.userId;
         const { bookId, quantity } = req.body;
 
-        console.log("id:", userId);
-        console.log("BODY:", req.body);
+        // Upsert Cart
+        const foundCart = await cart.upsert({
+            where: { userId },
+            update: { updatedAt: getVietnamTime() },
+            create: { userId, updatedAt: getVietnamTime() }
+        });
 
-    
-        //find exist cart or add a new one
-        let foundCart = await cart.findUnique({ where: { userId } });
-    
-        if (!foundCart) {
-            foundCart = await cart.create({
-            data: {
-                user: { connect: { userId } },
-                updatedAt: getVietnamTime(),
-            }
-            });
-            console.log("Created new cart:", foundCart);
-        } else {
-            console.log("Found existing cart:", foundCart);
-        }
-    
-        //check if cart already contains books 
+        // Check if CartItem exists
         const existingItem = await cartItem.findUnique({
             where: {
-            cartId_bookId: {
-                cartId: foundCart.cartId,
-                bookId: bookId
-            }
+                cartId_bookId: {
+                    cartId: foundCart.cartId,
+                    bookId: bookId
+                }
             }
         });
-    
+
         if (existingItem) {
-            //if exist, update the quantity
+            // Update quantity if exists
             await cartItem.update({
-            where: { cartId_bookId: { cartId: foundCart.cartId, bookId } },
-            data: { quantity: existingItem.quantity + quantity }
+                where: {
+                    cartId_bookId: {
+                        cartId: foundCart.cartId,
+                        bookId: bookId
+                    }
+                },
+                data: {
+                    quantity: existingItem.quantity + quantity
+                }
             });
         } else {
-            //if not, add new book
+            // Create new cart item
             await cartItem.create({
-            data: {
-                cart: { connect: { cartId: foundCart.cartId } },
-                book: { connect: { bookId } },
-                quantity
-            }
+                data: {
+                    cartId: foundCart.cartId,   // Use foreign key directly
+                    bookId: bookId,             // Avoid `connect` to reduce extra query
+                    quantity
+                }
             });
         }
-    
-        res.status(200).json({ success: true, message: 'Added to cart'});
+
+        return res.status(200).json({ success: true, message: 'Added to cart' });
+
     } catch (error) {
-        res.status(400).json(error);
+        console.error('Add to cart error:', error);
+        return res.status(500).json({ success: false, error: error.message || 'Internal Server Error' });
     }
 };
+
   
 
 const updateCartItem = async (req, res) => {
     try {
         const userId = req.user.userId;
         const { bookId, quantity } = req.body;
-    
+
         const foundCart = await cart.findUnique({ where: { userId } });
-    
+
         if (!foundCart) {
-            return res.status(404).json({ message: "Cart not found" });
+            return res.status(404).json({ success: false, message: "Cart not found" });
         }
-    
+
         await cartItem.update({
             where: {
-            cartId_bookId: {
-                cartId: foundCart.cartId,
-                bookId
-            }
+                cartId_bookId: {
+                    cartId: foundCart.cartId,
+                    bookId
+                }
             },
-            data: {
-            quantity
-            }
+            data: { quantity }
         });
-    
-        res.status(200).json({ success: true, message: 'Quantity updated' });
+
+        return res.status(200).json({ success: true, message: 'Quantity updated' });
     } catch (error) {
-        res.status(400).json(error);
+        console.error("Error in updateCartItem:", error);
+        return res.status(400).json({ success: false, message: error.message });
     }
 };
-  
+
 
 const removeFromCart = async (req, res) => {
     try {
@@ -148,10 +206,9 @@ const removeFromCart = async (req, res) => {
         const foundCart = await cart.findUnique({ where: { userId } });
 
         if (!foundCart) {
-            return res.status(404).json({ message: "Cart not found" });
+            return res.status(404).json({ success: false, message: "Cart not found" });
         }
 
-        //delete Item from cartItem schema
         await cartItem.delete({
             where: {
                 cartId_bookId: {
@@ -161,63 +218,49 @@ const removeFromCart = async (req, res) => {
             }
         });
 
-        //check if there are items in cartItem
-        const remainingItems = await cartItem.findMany({
+        // Xóa giỏ hàng nếu không còn item nào
+        const itemCount = await cartItem.count({
             where: { cartId: foundCart.cartId }
         });
 
-        if (remainingItems.length === 0) {
-            //if no, delete in Cart schema
-            await cart.delete({
-                where: { cartId: foundCart.cartId }
-            });
+        if (itemCount === 0) {
+            await cart.delete({ where: { cartId: foundCart.cartId } });
             console.log("Cart was empty, deleted cart");
         }
 
-        res.status(200).json({ success: true, message: 'Item removed' });
-
+        return res.status(200).json({ success: true, message: 'Item removed' });
     } catch (error) {
         console.error("Error in removeFromCart:", error);
-        res.status(500).json( error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
-  
-  
 
 const clearCart = async (req, res) => {
     try {
         const userId = req.user.userId;
 
         const foundCart = await cart.findUnique({ where: { userId } });
-        
+
         if (!foundCart) {
             return res.status(404).json({ success: false, message: 'Cart not found' });
         }
 
-        const deletedItems = await cartItem.deleteMany({ where: { cartId: foundCart.cartId } });
-
-        //check if there are items in cartItem
-        const remainingItems = await cartItem.findMany({
+        const deletedItems = await cartItem.deleteMany({
             where: { cartId: foundCart.cartId }
         });
 
-        if (remainingItems.length === 0) {
-            //if no, delete in Cart schema
-            await cart.delete({
-                where: { cartId: foundCart.cartId }
-            });
-            console.log("Cart was empty, deleted cart");
-        }
+        // Sau khi xóa, chắc chắn cart trống => xóa cart luôn
+        await cart.delete({ where: { cartId: foundCart.cartId } });
+        console.log("Cleared cart and deleted cart container");
 
-        res.status(200).json({ deletedAll: true, deletedItems});
-
+        return res.status(200).json({ success: true, deletedItems });
     } catch (error) {
-        console.log(error);
-        res.status(400).json(error);
+        console.error("Error in clearCart:", error);
+        return res.status(400).json({ success: false, message: error.message });
     }
-
 };
+
 
 module.exports = {
   getCart,

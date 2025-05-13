@@ -106,7 +106,7 @@ const createBook = async (req, res) => {
 
     //check for required field
     if (!cleanedBody.title) {
-      return res.status(400).json({ error: "Book-title missing" });
+      return res.status(400).json({ error: "Book's fields missing" });
     }
 
     //create new book and save
@@ -315,7 +315,7 @@ const getBookById = async (req, res) => {
 };
 
 
-//search book by title and category
+//search book by all criterias
 const searchBooks = async (req, res) => {
   try {
     const { title, names, author, publisher } = req.query; //names of categories
@@ -393,7 +393,7 @@ const searchBooks = async (req, res) => {
   }
 };
 
-//Update book
+
 //Update book
 const updateBook = async (req, res) => {
   try {
