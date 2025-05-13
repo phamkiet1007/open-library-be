@@ -1,6 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const { getVietnamTime } = require('../utils/date.utils');
 const { generateTransactionId } = require('../utils/generate_transaction_id');
+const { sendPaymentSuccessMail } = require('../utils/send_email.utils');
+
 
 const prisma = new PrismaClient({
   log: ["query", "info", "warn", "error"]
@@ -13,6 +15,7 @@ const { payment, order } = prisma;
 const createPayment = async (req, res) => {
   try {
     const userId = req.user.userId;
+    
     const transaction_id = generateTransactionId(userId);
     const { orderId, payment_method } = req.body;
 
@@ -54,6 +57,11 @@ const createPayment = async (req, res) => {
       where: { orderId },
       data: { status: 'PAID' }
     });
+
+    const userName = req.user.username;
+    const userEmail = req.user.email;
+
+    await sendPaymentSuccessMail(userEmail, userName, amount, orderId, payment_method, transaction_id);
 
     res.status(201).json({ isPaid: true, payment: newPayment });
   } catch (error) {

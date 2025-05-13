@@ -100,7 +100,7 @@ const register = async (req, res) => {
         message: error
       });
     }
-  };
+};
   
 
 /*Verify email function */

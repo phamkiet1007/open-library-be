@@ -7,7 +7,6 @@ require('dotenv').config();
 const GMAIL_HOST = process.env.GMAIL_HOST;
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
-const EMAIL_TO = process.env.EMAIL_TO;
 const EMAIL_CC = process.env.EMAIL_CC;
 const EMAIL_BCC = process.env.EMAIL_BCC;
 
@@ -33,7 +32,7 @@ const transporter = nodemailer.createTransport({
 const sendConfirmationMail = async (token, userName, userEmail) => {
     const mailOptions = {
         from: GMAIL_USER,
-        to: EMAIL_TO,
+        to: userEmail,
         cc: EMAIL_CC,
         bcc: EMAIL_BCC,
         subject: 'Confirm Your Email For Registration',
@@ -53,4 +52,50 @@ const sendConfirmationMail = async (token, userName, userEmail) => {
     }
 };
 
-module.exports = { sendConfirmationMail };
+const paymentSuccessTemplate = `
+  <p>Hello <strong>{userName}</strong>,</p>
+  <p>You have successfully paid for your order.</p>
+  <ul>
+    <li><strong>Order ID:</strong> {orderId}</li>
+    <li><strong>Total amount:</strong> {formattedAmount} VND</li>
+    <li><strong>Payment method:</strong> {payment_method}</li>
+    <li><strong>Transaction ID:</strong> {transaction_id}</li>
+  </ul>
+  <p>Thank you for your purchase 📚</p>
+  <p style="font-size: 14px; color: red;">Please do not reply to this email.</p>
+`;
+
+const sendPaymentSuccessMail = async (userEmail, userName, amount, orderId, payment_method, transaction_id) => {
+    const formattedAmount = Number(amount).toLocaleString('vi-VN');
+
+    const mailOptions = {
+        from: GMAIL_USER,
+        to: userEmail,
+        cc: EMAIL_CC,
+        bcc: EMAIL_BCC,
+        subject: 'Payment Successfully',
+        html: format(paymentSuccessTemplate, {
+            userName, 
+            orderId,
+            formattedAmount,
+            payment_method,
+            transaction_id
+        }),
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent:', info.response);
+        return info;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+};
+
+
+
+module.exports = { 
+    sendConfirmationMail,
+    sendPaymentSuccessMail
+};
