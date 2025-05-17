@@ -12,6 +12,8 @@ const createOrderFromCart = async (req, res) => {
   try {
     const userId = req.user.userId;
 
+    const { selectedBookIds } = req.body; //array of books selected to order
+
     const foundCart = await cart.findUnique({
     where: { userId },
         include: {
@@ -23,8 +25,17 @@ const createOrderFromCart = async (req, res) => {
 
     if (!foundCart || foundCart.items.length === 0) {
         return res.status(400).json({error: "There is no items in user's cart"});
-
     }
+
+    /*select books to order */
+    const selectedItems = foundCart.items.filter(item =>
+      selectedBookIds.includes(item.bookId)
+    );
+
+    if (selectedItems.length === 0) {
+      return res.status(400).json({ error: "No matching books in your cart" });
+    }
+    /*select books to order */
 
     //compute totalCost
     const totalAmount = foundCart.items.reduce((sum, item) => {
@@ -48,14 +59,26 @@ const createOrderFromCart = async (req, res) => {
         }
     });
 
-    //delete all items in Cart if foundCart is empty
-    await cartItem.deleteMany({ where: { cartId: foundCart.cartId } });
-    await cart.delete({ where: { cartId: foundCart.cartId } });
+    //delete all selected items in Cart
+    await cartItem.deleteMany({ 
+        where: { 
+        cartId: foundCart.cartId,
+        bookId: { in: selectedBookIds }
+        } 
+    });
 
-    res.status(200).json(newOrder);
+    //check for remaining items, if no items left, delete cart
+    const remainingItems = await cartItem.findMany({
+      where: { cartId: foundCart.cartId }
+    });
+    if (remainingItems.length === 0) {
+      await cart.delete({ where: { cartId: foundCart.cartId } });
+    }
+
+    res.status(200).json({ isOrdered: true, order: newOrder });
 
     } catch (error) {
-        res.status(400).json(error);
+        res.status(500).json({ isOrdered: false, error });
     }
 };
 
