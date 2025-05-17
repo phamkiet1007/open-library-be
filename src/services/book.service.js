@@ -290,9 +290,11 @@ const getBookById = async (req, res) => {
     }
 
     //return categories with array format
-    const formattedCategories = foundBook.categories.map((cat) => cat.category.name);
+    const formattedCategories = foundBook.categories.map(
+      (cat) => cat.category.name
+    );
 
-    // Format ratings 
+    // Format ratings
     const formattedRatings = foundBook.ratings.map((rating) => ({
       ratingId: rating.ratingId,
       score: rating.score,
@@ -305,15 +307,14 @@ const getBookById = async (req, res) => {
       ...foundBook,
       categories: formattedCategories,
       ratings: formattedRatings,
-      coverImage: foundBook.coverImage, 
-      filePath: foundBook.filePath,     
+      coverImage: foundBook.coverImage,
+      filePath: foundBook.filePath,
     });
   } catch (error) {
     console.error(error);
     res.status(400).json(error);
   }
 };
-
 
 //search book by title and category
 const searchBooks = async (req, res) => {
@@ -343,12 +344,14 @@ const searchBooks = async (req, res) => {
       };
     }
 
-    if (names && Array.isArray(names)) {
+    if (names) {
       filters.categories = {
         some: {
           category: {
             name: {
-              in: names.map((name) => name.toLowerCase()), //"in" to find many values
+              in: Array.isArray(names)
+                ? names.map((name) => name.toLowerCase())
+                : [names.toLowerCase()],
               mode: "insensitive",
             },
           },
