@@ -5,10 +5,11 @@ const { isAdmin, isMember } = require('../middlewares/role.middleware');
 
 const { 
     createOrderFromCart,
-    getOrdersByUser
+    getOrdersByUser,
+    buyNow
 } = require('../services/order.service');
 
-
+router.post('/buy-now', authenticate, buyNow); //
 router.post('/place-order', authenticate, createOrderFromCart); //
 router.get('/get-my-orders', authenticate, getOrdersByUser); //
 

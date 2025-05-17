@@ -49,7 +49,6 @@ const getCart = async (req, res) => {
       }
     }
 
-    // Xử lý trường hợp không tìm thấy giỏ hàng
     if (!foundCart) {
       return res.status(200).json({
         cartId: null,
@@ -59,7 +58,7 @@ const getCart = async (req, res) => {
       });
     }
 
-    // Sử dụng reduce một lần duy nhất để tính cả totalQuantity và totalPrice
+    //compute totalQuantity & totalPrice
     const { items, totalQuantity, totalPrice } = foundCart.items.reduce(
       (acc, { book, quantity }) => {
         acc.items.push({
@@ -76,10 +75,10 @@ const getCart = async (req, res) => {
       { items: [], totalQuantity: 0, totalPrice: 0 }
     );
 
-    // Sử dụng cache control để tối ưu performance
-    res.setHeader('Cache-Control', 'private, max-age=10'); // Cache 10 giây ở client
+    //cache control to optimize performance
+    res.setHeader('Cache-Control', 'private, max-age=10'); // Cache 10 mis from client-side
     
-    return res.status(200).json({
+    res.status(200).json({
       cartId: foundCart.cartId,
       items,
       totalQuantity,
@@ -88,26 +87,7 @@ const getCart = async (req, res) => {
 
   } catch (error) {
     console.error("Error in getCart:", error);
-    
-    // Phân loại lỗi để trả về thông báo phù hợp
-    if (error.code === 'P2002') {
-      return res.status(409).json({ 
-        success: false, 
-        message: "Xung đột dữ liệu giỏ hàng" 
-      });
-    }
-    
-    if (error.message.includes("Can't reach database server")) {
-      return res.status(503).json({ 
-        success: false, 
-        message: "Không thể kết nối đến cơ sở dữ liệu, vui lòng thử lại sau" 
-      });
-    }
-
-    return res.status(500).json({ 
-      success: false, 
-      message: "Lỗi máy chủ khi lấy thông tin giỏ hàng" 
-    });
+    res.status(400).json(error);
   }
 };
 
@@ -218,7 +198,7 @@ const removeFromCart = async (req, res) => {
             }
         });
 
-        // Xóa giỏ hàng nếu không còn item nào
+        //delete if there is no items in user's cart
         const itemCount = await cartItem.count({
             where: { cartId: foundCart.cartId }
         });
@@ -250,7 +230,7 @@ const clearCart = async (req, res) => {
             where: { cartId: foundCart.cartId }
         });
 
-        // Sau khi xóa, chắc chắn cart trống => xóa cart luôn
+        //if user's cart is empty => delete it
         await cart.delete({ where: { cartId: foundCart.cartId } });
         console.log("Cleared cart and deleted cart container");
 

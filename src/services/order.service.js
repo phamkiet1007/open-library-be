@@ -81,7 +81,49 @@ const getOrdersByUser = async (req, res) => {
   
 };
 
+// user can click on buyNow, don't need to buy through cart
+const buyNow = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { bookId, quantity = 1 } = req.body;
+
+    if (quantity <= 0) {
+      return res.status(400).json({ success: false, message: "Quantity must be at least 1" });
+    }
+
+    const book = await prisma.book.findUnique({ where: { bookId } });
+    if (!book) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    const totalAmount = book.price * quantity;
+
+    const newOrder = await prisma.order.create({
+      data: {
+        user: { connect: { userId } },
+        total_amount: totalAmount,
+        status: 'PENDING',
+        order_date: getVietnamTime(),
+        orderItems: {
+          create: [{
+            bookId,
+            quantity,
+            price_per_unit: book.price
+          }]
+        }
+      }
+    });
+
+    res.status(201).json({ success: true, order: newOrder });
+  } catch (error) {
+    console.error("Error in buyNow:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
 module.exports = {
   createOrderFromCart,
-  getOrdersByUser
+  getOrdersByUser,
+  buyNow
 };
