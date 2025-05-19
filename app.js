@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const routes = require("./src/routes");
+require("dotenv").config();
+
 
 //error helpers
 const prismaErrorHandler = require("./src/middlewares/prisma_error.middleware");

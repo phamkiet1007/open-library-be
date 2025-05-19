@@ -49,6 +49,7 @@ model Book {
   isAvailableOnline  Boolean        @default(false)
   isbn               String         @unique
   previewPages       Int?           @default(20)
+  previewAudioUrl    String?
   publishDate        DateTime
   publisher          String
   updated_at         DateTime       @updatedAt
