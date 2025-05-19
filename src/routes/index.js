@@ -14,7 +14,7 @@ const userRoutes = require('./user.route');
 
 router.use('/auth', authRoutes);
 router.use('/books', bookRoutes);
-router.use('/text-to-speech', ttsRoutes);
+// router.use('/text-to-speech', ttsRoutes);
 
 router.use('/cart', cartRoutes);
 router.use('/order', orderRoutes);
