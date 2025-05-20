@@ -298,7 +298,7 @@ const getBookById = async (req, res) => {
     const formattedRatings = foundBook.ratings.map((rating) => ({
       ratingId: rating.ratingId,
       score: rating.score,
-      comment: rating.comment,
+      review: rating.review,
       createdAt: rating.created_at,
       user: rating.user,
     }));
