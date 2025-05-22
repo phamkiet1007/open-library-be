@@ -297,7 +297,7 @@ const getBookById = async (req, res) => {
     // Format ratings
     const formattedRatings = foundBook.ratings.map((rating) => ({
       ratingId: rating.ratingId,
-      score: rating.score,
+      score: rating.rating,
       review: rating.review,
       createdAt: rating.created_at,
       user: rating.user,
@@ -395,7 +395,6 @@ const searchBooks = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 
 //Update book
 const updateBook = async (req, res) => {
