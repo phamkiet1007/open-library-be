@@ -12,10 +12,24 @@ const errorHandlers = require("./src/middlewares/error.middleware").all;
 const app = express();
 app.use(
   cors({
-    origin: ["https://flexiblelib.netlify.app/", "http://localhost:5173"],
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        "https://flexiblelib.netlify.app",
+        "http://localhost:5173",
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+    optionsSuccessStatus: 204,
   })
 );
+app.options("*", cors());
 
 //listen to the port of fe
 // app.use(cors({
@@ -45,3 +59,6 @@ app.use(prismaErrorHandler);
 app.use(errorHandlers);
 
 module.exports = app;
+app.get("/api/test", (req, res) => {
+  res.json({ message: "Connection successful!" });
+});
