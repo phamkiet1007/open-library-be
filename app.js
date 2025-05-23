@@ -3,7 +3,6 @@ const cors = require("cors");
 const routes = require("./src/routes");
 require("dotenv").config();
 
-
 //error helpers
 const prismaErrorHandler = require("./src/middlewares/prisma_error.middleware");
 const errorHandlers = require("./src/middlewares/error.middleware").all;
@@ -11,7 +10,7 @@ const errorHandlers = require("./src/middlewares/error.middleware").all;
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["https://flexiblelib.netlify.app/", "http://localhost:5173"],
     credentials: true,
   })
 );
