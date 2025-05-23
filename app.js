@@ -10,26 +10,13 @@ const prismaErrorHandler = require("./src/middlewares/prisma_error.middleware");
 const errorHandlers = require("./src/middlewares/error.middleware").all;
 
 const app = express();
+
 app.use(
   cors({
-    origin: function (origin, callback) {
-      const allowedOrigins = [
-        "https://flexiblelib.netlify.app",
-        "http://localhost:5173",
-      ];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: ["https://flexiblelib.netlify.app", "http://localhost:5173"],
     credentials: true,
-    optionsSuccessStatus: 204,
   })
 );
-app.options("*", cors());
 
 //listen to the port of fe
 // app.use(cors({
