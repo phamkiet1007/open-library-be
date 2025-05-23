@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
-const routes = require("./src/routes");
+// const routes = require("./src/routes");
+const path = require("path");
+const routes = require(path.join(__dirname, "src", "routes"));
 require("dotenv").config();
 
 //error helpers
