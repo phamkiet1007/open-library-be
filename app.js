@@ -11,12 +11,28 @@ const errorHandlers = require("./src/middlewares/error.middleware").all;
 
 const app = express();
 
-app.use(
-  cors({
-    origin: ["https://flexiblelib.netlify.app", "http://localhost:5173"],
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  "https://flexiblelib.netlify.app",
+  "http://localhost:5173",
+];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 //listen to the port of fe
 // app.use(cors({
@@ -46,6 +62,3 @@ app.use(prismaErrorHandler);
 app.use(errorHandlers);
 
 module.exports = app;
-app.get("/api/test", (req, res) => {
-  res.json({ message: "Connection successful!" });
-});
