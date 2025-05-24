@@ -36,6 +36,13 @@ const createOrderFromCart = async (req, res) => {
       return res.status(400).json({ error: "No matching books in your cart" });
     }
     /*select books to order */
+    
+    //check for the available quantity 
+    for (const item of selectedItems) {
+      if (item.book.quantity_available < item.quantity) {
+        return res.status(400).json({ error: `Not enough stock for book "${item.book.title}"` });
+      }
+    }
 
     //compute totalCost
     const totalAmount = foundCart.items.reduce((sum, item) => {
@@ -67,7 +74,7 @@ const createOrderFromCart = async (req, res) => {
         } 
     });
 
-    //check for remaining items, if no items left, delete cart
+    //check for remaining items, if no items left => delete cart
     const remainingItems = await cartItem.findMany({
       where: { cartId: foundCart.cartId }
     });
@@ -119,6 +126,11 @@ const buyNow = async (req, res) => {
       return res.status(404).json({ success: false, message: "Book not found" });
     }
 
+    //check for the available quantity
+    if (book.quantity_available < quantity) {
+      return res.status(400).json({ success: false, message: "Not enough stock available" });
+    }
+
     const totalAmount = book.price * quantity;
 
     const newOrder = await prisma.order.create({
@@ -137,6 +149,7 @@ const buyNow = async (req, res) => {
       }
     });
 
+   
     res.status(201).json({ success: true, order: newOrder });
   } catch (error) {
     console.error("Error in buyNow:", error);
