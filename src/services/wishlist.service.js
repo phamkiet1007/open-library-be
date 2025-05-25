@@ -9,15 +9,15 @@ const addtoWishlist = async (req, res) => {
 
         const exists = await prisma.wishlist.findUnique({
             where: {
-              userId_bookId: {
-                userId,
-                bookId,
-              },
+                userId_bookId: {
+                    userId: parseInt(userId),
+                    bookId: parseInt(bookId),
+                },
             },
         });
     
         if (exists) {
-            return { message: 'Book is already in wishlist' };
+            res.status(400).json({ message: 'Book is already in wishlist'});
         }
 
         const wishlistItem = await prisma.wishlist.create({
