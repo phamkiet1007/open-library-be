@@ -33,6 +33,7 @@ model User {
   orders             Order[]
   ratings            Rating[]
   verificationToken  VerificationToken[]
+  wishlist Wishlist[]
 }
 
 model Book {
@@ -59,6 +60,7 @@ model Book {
   cartItems          CartItem[]
   orderItems         OrderItem[]
   ratings            Rating[]
+  wishlistedBy Wishlist[]
 }
 
 model Category {
@@ -138,6 +140,17 @@ model CartItem {
   cart       Cart @relation(fields: [cartId], references: [cartId], onDelete: Cascade)
 
   @@unique([cartId, bookId])
+}
+
+model Wishlist {
+  userId    Int
+  bookId    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
+
+  @@id([userId, bookId])
 }
 
 enum Role {
