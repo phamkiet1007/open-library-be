@@ -7,6 +7,8 @@ const ttsRoutes = require("./tts.route");
 const cartRoutes = require("./cart.route");
 const orderRoutes = require("./order.route");
 const paymentRoutes = require("./payment.route");
+const wishlistRoutes = require("./wishlist.route");
+
 
 const userRoutes = require("./user.route");
 
@@ -17,6 +19,8 @@ router.use("/books", bookRoutes);
 router.use("/cart", cartRoutes);
 router.use("/order", orderRoutes);
 router.use("/payment", paymentRoutes);
+router.use("/wishlist", wishlistRoutes);
+
 
 router.use("/user", userRoutes);
 

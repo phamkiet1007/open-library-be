@@ -22,8 +22,16 @@ const createPayment = async (req, res) => {
     // Check if order exists and belongs to current user
     const existingOrder = await order.findUnique({
       where: { orderId },
-      include: { payments: true }
+      include: { 
+        payments: true,
+        orderItems: {
+          include: {
+            book: true  // Include book to check the quantity
+          }
+        }
+      }
     });
+    
 
     if (!existingOrder || existingOrder.userId !== userId) {
       return res.status(403).json({ success: false, message: "Unauthorized or order not found" });
@@ -41,27 +49,48 @@ const createPayment = async (req, res) => {
       return res.status(409).json({ success: false, message: "Transaction already exists" });
     }
 
-    // Create payment
-    const newPayment = await payment.create({
-      data: {
-        orderId,
-        amount,
-        payment_method,
-        transaction_id,
-        payment_date: getVietnamTime()
-      }
-    });
+    // Create payment & update order-status & decrease quantity 
+    const newPayment = await prisma.$transaction(async (tx) => {
+      //create payment
+      const payment = await tx.payment.create({
+        data: {
+          orderId,
+          amount,
+          payment_method,
+          transaction_id,
+          payment_date: getVietnamTime()
+        }
+      });
 
-    // Update order status to 'PAID'
-    await order.update({
-      where: { orderId },
-      data: { status: 'PAID' }
+      // change order-status to 'PAID'
+      await tx.order.update({
+        where: { orderId },
+        data: { status: 'PAID' }
+      });
+
+      //decrease number of book's quantity
+      for (const orderItem of existingOrder.orderItems) {
+        await tx.book.update({
+          where: { bookId: orderItem.bookId },
+          data: {
+            quantity_available: {
+              decrement: orderItem.quantity
+            }
+          }
+        });
+      }
+
+      return payment;
     });
 
     const userName = req.user.username;
     const userEmail = req.user.email;
 
-    await sendPaymentSuccessMail(userEmail, userName, amount, orderId, payment_method, transaction_id);
+    try {
+      await sendPaymentSuccessMail(userEmail, userName, amount, orderId, payment_method, transaction_id);
+    } catch (emailError) {
+      console.error("There is an error when sending payment-email:", emailError);
+    }
 
     res.status(201).json({ isPaid: true, payment: newPayment });
   } catch (error) {

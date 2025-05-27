@@ -33,7 +33,7 @@ model User {
   orders             Order[]
   ratings            Rating[]
   verificationToken  VerificationToken[]
-  wishlist Wishlist[]
+  wishlist           Wishlist[]
 }
 
 model Book {
@@ -60,7 +60,7 @@ model Book {
   cartItems          CartItem[]
   orderItems         OrderItem[]
   ratings            Rating[]
-  wishlistedBy Wishlist[]
+  wishlistedBy       Wishlist[]
 }
 
 model Category {
@@ -143,9 +143,9 @@ model CartItem {
 }
 
 model Wishlist {
-  userId    Int
-  bookId    Int
-  createdAt DateTime @default(now())
+  userId        Int
+  bookId        Int
+  createdAt     DateTime @default(now())
 
   user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
   book Book @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
