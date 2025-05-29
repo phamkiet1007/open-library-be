@@ -1,6 +1,10 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+const bcrypt = require("bcrypt");
+const { generateVerificationToken } = require("../utils/generate_token.utils");
+const { sendChangePasswordMail, sendSuccessPasswordChanged } = require('../utils/send_email.utils');
+
 const user = prisma.user;
 
 const getUserInformation = async (req, res) => {
@@ -18,34 +22,11 @@ const getUserInformation = async (req, res) => {
         lastName: true,
         address: true,
       },
-      // include: {
-      //     categories: {
-      //         include: {
-      //             category: {
-      //                 select: {
-      //                     name: true
-      //                 }
-      //             }
-      //         }
-      //     },
-      //     orders: {
-      //         include: {
-      //             user: {
-      //                 select: {
-      //                     userId: true,
-      //                     username: true
-      //                 }
-      //             }
-      //         }
-      //     }
-      // }
     });
 
     if (!foundUser) {
       return res.status(400).json({ error: "User not found!" });
     }
-
-    // foundBook.categories = foundBook.categories.map(cat => cat.category.name);
 
     res.status(200).json(foundUser);
   } catch (error) {
@@ -79,9 +60,6 @@ const updateUserProfile = async (req, res) => {
       });
     }
 
-    // Add updated_at timestamp
-    updateData.updated_at = new Date();
-
     // First check if user exists
     const userExists = await user.findUnique({
       where: { username },
@@ -97,13 +75,11 @@ const updateUserProfile = async (req, res) => {
       where: { username },
       data: updateData,
       select: {
-        userId: true,
         username: true,
         email: true,
         firstName: true,
         lastName: true,
         address: true,
-        updated_at: true,
       },
     });
 
@@ -119,7 +95,117 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
+// Reset password request
+const requestPasswordChange = async (req, res) => {
+  try {
+    const username = req.user.username;
+    const email  = req.user.email;
+    const { currentPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({ error: "Current password is required." });
+    }
+
+    const foundUser = await prisma.user.findUnique({ where: { username } });
+    if (!foundUser) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const passwordMatch = await bcrypt.compare(currentPassword, foundUser.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: "Current password is incorrect." });
+    }
+
+    const token = generateVerificationToken();
+
+    //delete any existing verification tokens for password reset
+    await prisma.VerificationToken.deleteMany({
+      where: {
+        userId: foundUser.userId,
+        type: "PASSWORD_RESET",
+      },
+    });
+
+    //create a new verification token for password reset
+    await prisma.VerificationToken.create({
+      data: {
+        token,
+        userId: foundUser.userId,
+        type: "PASSWORD_RESET",
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 phút
+      },
+    });
+
+    //Send confirmation email with the token
+    await sendChangePasswordMail(token, username, email);
+
+    res.status(200).json({ message: "Verification token sent to email." });
+  } catch (err) {
+    console.error("requestPasswordChange error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+
+// Enter token to confirm password change
+const confirmPasswordChange = async (req, res) => {
+  try {
+    const username = req.user.username;
+    const email  = req.user.email;
+
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: "Token and new password are required." });
+    }
+
+    const foundUser = await prisma.user.findUnique({ where: { username } });
+    if (!foundUser) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const validToken = await prisma.verificationToken.findFirst({
+      where: {
+        userId: foundUser.userId,
+        token,
+        type: "PASSWORD_RESET",
+        expiresAt: { 
+          gt: new Date() 
+        }, //non-expired Token
+      },
+    });
+
+    if (!validToken) {
+      return res.status(401).json({ error: "Invalid or expired token." });
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { userId: foundUser.userId },
+        data: { password: hashedNewPassword },
+      }),
+      //delete token after changed
+      prisma.verificationToken.delete({
+        where: { id: validToken.id },
+      }),
+    ]);
+
+    // Send successful email to user
+    await sendSuccessPasswordChanged(username, email);
+
+    res.status(200).json({ message: "Password changed successfully." });
+  } catch (err) {
+    console.error("confirmPasswordChange error:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+
 module.exports = {
   getUserInformation,
   updateUserProfile,
+  requestPasswordChange,
+  confirmPasswordChange
 };

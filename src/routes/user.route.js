@@ -7,9 +7,14 @@ const {
 const {
   getUserInformation,
   updateUserProfile,
+  requestPasswordChange,
+  confirmPasswordChange,
 } = require("../services/user.service");
 
-router.get("/account", authenticate, getUserInformation);
-router.patch("/profile", authenticate, updateUserProfile);
+router.get("/profile", authenticate, getUserInformation); //
+router.patch("/update-profile", authenticate, updateUserProfile); //
+router.post("/change-password", authenticate, requestPasswordChange); //
+router.post("/verify-token", authenticate, confirmPasswordChange); //
+
 
 module.exports = router;

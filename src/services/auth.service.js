@@ -84,11 +84,12 @@ const register = async (req, res) => {
         data: {
           token: verificationToken,
           userId: newUser.userId,
+          type: "EMAIL_VERIFICATION",
           expiresAt: new Date(Date.now() + 15 * 60 * 1000), //15mins
         }
       });
 
-      //send confirmation email
+      //send confirmation email with the token
       await sendConfirmationMail(verificationToken, newUser.username, newUser.email);
 
       res.json({ isRegister: true, message: 'Please check your email to verify your account!' });
