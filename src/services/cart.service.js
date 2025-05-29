@@ -2,6 +2,8 @@ const { getVietnamTime } = require('../utils/date.utils');
 
 
 const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
 const { cart, cartItem } = new PrismaClient({
     log: ["query", "info", "warn", "error"]
 });;
@@ -149,32 +151,46 @@ const addToCart = async (req, res) => {
 
   
 
+//optimize query using transaction & return only updated quantity
 const updateCartItem = async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        const { bookId, quantity } = req.body;
+  try {
+    const userId = req.user.userId;
+    const { bookId, quantity } = req.body;
 
-        const foundCart = await cart.findUnique({ where: { userId } });
+    const result = await prisma.$transaction(async (tx) => {
+      const foundCart = await tx.cart.findUnique({
+        where: { userId },
+        select: { cartId: true } 
+      });
 
-        if (!foundCart) {
-            return res.status(404).json({ success: false, message: "Cart not found" });
-        }
+      if (!foundCart) {
+        throw new Error("Cart not found");
+      }
 
-        await cartItem.update({
-            where: {
-                cartId_bookId: {
-                    cartId: foundCart.cartId,
-                    bookId
-                }
-            },
-            data: { quantity }
-        });
+      return await tx.cartItem.update({
+        where: {
+          cartId_bookId: {
+            cartId: foundCart.cartId,
+            bookId
+          }
+        },
+        data: { quantity },
+        select: { quantity: true } 
+      });
+    });
 
-        return res.status(200).json({ success: true, message: 'Quantity updated' });
-    } catch (error) {
-        console.error("Error in updateCartItem:", error);
-        return res.status(400).json({ success: false, message: error.message });
-    }
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Quantity updated',
+      quantity: result.quantity 
+    });
+  } catch (error) {
+    console.error("Error in updateCartItem:", error);
+    return res.status(400).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
 };
 
 
