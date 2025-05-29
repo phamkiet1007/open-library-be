@@ -95,7 +95,7 @@ const createOrderFromCart = async (req, res) => {
 //Get orders of user by username
 const getOrdersByUser = async (req, res) => {
   try {
-    const { userId } = req.user.userId;
+    const userId = req.user.userId; // Fix here - userId is directly accessible from req.user
     const orders = await order.findMany({
       where: { userId },
       include: {
