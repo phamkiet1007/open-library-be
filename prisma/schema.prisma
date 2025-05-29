@@ -15,6 +15,7 @@ model VerificationToken {
   userId    Int
   expiresAt DateTime
   createdAt DateTime @default(now())
+  type      String?
   user      User     @relation(fields: [userId], references: [userId])
 }
 
