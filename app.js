@@ -12,7 +12,7 @@ const errorHandlers = require("./src/middlewares/error.middleware").all;
 const app = express();
 
 const allowedOrigins = [
-  "https://flexiblelib.netlify.app",
+  "https://openlib88.netlify.app",
   "http://localhost:5173",
 ];
 
