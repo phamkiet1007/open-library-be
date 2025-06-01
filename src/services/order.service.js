@@ -95,7 +95,7 @@ const createOrderFromCart = async (req, res) => {
 //Get orders of user by username
 const getOrdersByUser = async (req, res) => {
   try {
-    const userId = req.user.userId; // Fix here - userId is directly accessible from req.user
+    const userId = req.user.userId; 
     const orders = await order.findMany({
       where: { userId },
       include: {
@@ -166,8 +166,38 @@ const buyNow = async (req, res) => {
   }
 };
 
+// Get all orders (admin only)
+const getAllOrders = async (req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      include: {
+        user: {
+          select: {
+            userId: true,
+            username: true,
+            email: true,
+          },
+        },
+        orderItems: {
+          include: {
+            book: true,
+          },
+        },
+        payments: true,
+      },
+      orderBy: { order_date: "desc" },
+    });
+
+    res.status(200).json({ success: true, orders });
+  } catch (error) {
+    console.error("Error fetching all orders:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   createOrderFromCart,
   getOrdersByUser,
   buyNow,
+  getAllOrders,
 };
