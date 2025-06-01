@@ -25,6 +25,7 @@ model User {
   email              String                  @unique
   password           String
   address            String
+  isBlocked          Boolean                 @default(false)
   created_at         DateTime                @default(now())
   email_verification EmailVerificationStatus @default(NOT_VERIFIED)
   role               Role                    @default(MEMBER)

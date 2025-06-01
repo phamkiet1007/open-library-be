@@ -203,9 +203,92 @@ const confirmPasswordChange = async (req, res) => {
 };
 
 
+/*(admin only)*/
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await user.findMany({
+      select: {
+        userId: true,
+        username: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        address: true,
+        isBlocked: true,
+        created_at: true,
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("getAllUsers error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Block or unblock a user 
+const toggleUserBlock = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { block } = req.body; // boolean: true (block), false (unblock)
+
+    const parsedUserId = parseInt(userId);
+
+    if (typeof block !== 'boolean') {
+      return res.status(400).json({ error: "'block' must be true or false." });
+    }
+
+    const targetUser = await user.findUnique({ where: { userId: parsedUserId } });
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    await user.update({
+      where: { userId: parsedUserId },
+      data: { isBlocked: block },
+    });
+
+    res.status(200).json({
+      message: `User has been ${block ? "blocked" : "unblocked"}.`,
+    });
+  } catch (error) {
+    console.error("toggleUserBlock error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Delete user 
+const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const parsedUserId = parseInt(userId);
+
+    const existingUser = await user.findUnique({ where: { userId: parsedUserId } });
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    await user.delete({ where: { userId: parsedUserId } });
+
+    res.status(200).json({ message: "User deleted successfully." });
+  } catch (error) {
+    console.error("deleteUser error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+/*(admin only)*/
+
+
 module.exports = {
   getUserInformation,
   updateUserProfile,
   requestPasswordChange,
-  confirmPasswordChange
+  confirmPasswordChange,
+  getAllUsers,
+  toggleUserBlock,
+  deleteUser,
 };

@@ -258,6 +258,10 @@ const login = async (req, res) => {
       });
     }
 
+    if (foundUser.isBlocked) {
+      return res.status(403).json({ message: 'This account is being blocked!' });
+    }
+
     if (foundUser.email_verification !== "VERIFIED") {
       // console.log('User not verified, current status:', foundUser.email_verification);
       throw createError({
