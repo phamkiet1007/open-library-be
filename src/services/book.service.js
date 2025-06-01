@@ -513,6 +513,41 @@ const createCategory = async (req, res) => {
   }
 };
 
+const deleteCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    const parsedCategoryId = parseInt(categoryId);
+
+    //check if exist
+    const existingCategory = await category.findUnique({
+      where: { categoryId: parsedCategoryId },
+    });
+
+    if (!existingCategory) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+
+    //delete link between book-category
+    await bookCategory.deleteMany({
+      where: { categoryId: parsedCategoryId },
+    });
+
+    // delete category
+    const deletedCategory = await category.delete({
+      where: { categoryId: parsedCategoryId },
+    });
+
+    res.status(200).json({
+      message: "Category deleted successfully",
+      deletedCategory,
+    });
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
 const getCategories = async (req, res) => {
   try {
     const result = await category.findMany();
@@ -533,5 +568,6 @@ module.exports = {
   deleteBook,
   addRating,
   createCategory,
+  deleteCategory,
   getCategories,
 };
