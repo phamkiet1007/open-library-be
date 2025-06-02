@@ -4,9 +4,10 @@ const multer = require("multer");
 const supabase = require("../configs/supabaseClient");
 
 const { PrismaClient } = require("@prisma/client");
-const { book, rating, category, bookCategory } = new PrismaClient({
-  log: ["query", "info", "warn", "error"],
-});
+const { book, rating, category, bookCategory, order, orderItem } =
+  new PrismaClient({
+    log: ["query", "info", "warn", "error"],
+  });
 
 const {
   createError,
@@ -151,7 +152,6 @@ const createBook = async (req, res) => {
   }
 };
 
-
 const getBooks = async (req, res) => {
   try {
     const result = await book.findMany({
@@ -184,6 +184,7 @@ const getBooks = async (req, res) => {
 const getBookById = async (req, res) => {
   try {
     const { bookId } = req.params;
+    const userId = req.user?.userId; // Get user ID from auth middleware if available
 
     const foundBook = await book.findUnique({
       where: { bookId: parseInt(bookId) },
@@ -228,12 +229,24 @@ const getBookById = async (req, res) => {
       user: rating.user,
     }));
 
+    // Check if user has purchased this book
+    let userHasPurchased = false;
+    if (userId) {
+      userHasPurchased = await hasUserPurchasedBook(userId, bookId);
+    }
+
+    // Determine effective availability based on purchase status
+    const effectiveAvailability =
+      foundBook.isAvailableOnline || userHasPurchased;
+
     res.status(200).json({
       ...foundBook,
       categories: formattedCategories,
       ratings: formattedRatings,
       coverImage: foundBook.coverImage,
       filePath: foundBook.filePath,
+      isAvailableOnline: effectiveAvailability,
+      userHasPurchased: userHasPurchased,
     });
   } catch (error) {
     console.error(error);
@@ -556,6 +569,23 @@ const getCategories = async (req, res) => {
     console.error(error);
     res.status(500).json(error);
   }
+};
+
+// Helper function to check if a user has purchased a specific book
+const hasUserPurchasedBook = async (userId, bookId) => {
+  if (!userId || !bookId) return false;
+
+  const purchasedBook = await orderItem.findFirst({
+    where: {
+      bookId: parseInt(bookId),
+      order: {
+        userId: parseInt(userId),
+        status: "PAID",
+      },
+    },
+  });
+
+  return !!purchasedBook;
 };
 
 module.exports = {
