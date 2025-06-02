@@ -184,7 +184,6 @@ const getBooks = async (req, res) => {
 const getBookById = async (req, res) => {
   try {
     const { bookId } = req.params;
-    const userId = req.user?.userId; // Get user ID from auth middleware if available
 
     const foundBook = await book.findUnique({
       where: { bookId: parseInt(bookId) },
@@ -214,8 +213,7 @@ const getBookById = async (req, res) => {
     if (!foundBook) {
       throw createError(NOT_FOUND, "Book not found");
     }
-
-    //return categories with array format
+    //return categories with array formatMore actions
     const formattedCategories = foundBook.categories.map(
       (cat) => cat.category.name
     );
@@ -229,24 +227,12 @@ const getBookById = async (req, res) => {
       user: rating.user,
     }));
 
-    // Check if user has purchased this book
-    let userHasPurchased = false;
-    if (userId) {
-      userHasPurchased = await hasUserPurchasedBook(userId, bookId);
-    }
-
-    // Determine effective availability based on purchase status
-    const effectiveAvailability =
-      foundBook.isAvailableOnline || userHasPurchased;
-
     res.status(200).json({
       ...foundBook,
       categories: formattedCategories,
       ratings: formattedRatings,
       coverImage: foundBook.coverImage,
       filePath: foundBook.filePath,
-      isAvailableOnline: effectiveAvailability,
-      userHasPurchased: userHasPurchased,
     });
   } catch (error) {
     console.error(error);
