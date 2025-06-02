@@ -11,6 +11,7 @@ const {
   updateUserProfile,
   requestPasswordChange,
   confirmPasswordChange,
+  getPurchasedBooksForUser,
   getAllUsers,
   toggleUserBlock,
   deleteUser,
@@ -21,6 +22,8 @@ router.get("/profile", authenticate, getUserInformation); //
 router.patch("/update-profile", authenticate, updateUserProfile); //
 router.post("/change-password", authenticate, requestPasswordChange); //
 router.post("/verify-token", authenticate, confirmPasswordChange); //
+router.get('/purchased-books', authenticate, getPurchasedBooksForUser); //
+
 /*User routes */
 
 

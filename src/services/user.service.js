@@ -202,6 +202,37 @@ const confirmPasswordChange = async (req, res) => {
   }
 };
 
+const getPurchasedBooksForUser = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const purchasedBooks = await prisma.purchasedBook.findMany({
+      where: { userId },
+      include: {
+        book: {
+          select: {
+            bookId: true,
+            title: true,
+            author: true,
+            coverImage: true,
+            format: true,
+            price: true,
+            isAvailableOnline: true,
+          },
+        },
+      },
+    });
+
+    const formatted = purchasedBooks.map(item => item.book);
+
+    res.status(200).json({ purchasedBooks: formatted });
+  } catch (error) {
+    console.error("getPurchasedBooksForUser error:", error);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+
 
 /*(admin only)*/
 const getAllUsers = async (req, res) => {
@@ -289,6 +320,7 @@ module.exports = {
   updateUserProfile,
   requestPasswordChange,
   confirmPasswordChange,
+  getPurchasedBooksForUser,
   getAllUsers,
   toggleUserBlock,
   deleteUser,
