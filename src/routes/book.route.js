@@ -16,6 +16,7 @@ const {
   deleteBook,
   addRating,
   createCategory,
+  deleteCategory,
   getCategories,
 } = require("../services/book.service");
 
@@ -32,6 +33,8 @@ router.post("/:bookId/rating", authenticate, addRating); //
 router.post("/create", authenticate, isAdmin, upload, createBook); //
 
 router.post("/create-categories", authenticate, isAdmin, createCategory); //
+router.delete("/delete-categories/:categoryId", authenticate, isAdmin, deleteCategory); //
+
 router.patch("/update/:bookId", authenticate, isAdmin, upload, updateBook); //
 router.delete("/delete/:bookId", authenticate, isAdmin, deleteBook); //
 

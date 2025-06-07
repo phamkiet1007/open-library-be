@@ -4,9 +4,10 @@ const multer = require("multer");
 const supabase = require("../configs/supabaseClient");
 
 const { PrismaClient } = require("@prisma/client");
-const { book, rating, category, bookCategory } = new PrismaClient({
-  log: ["query", "info", "warn", "error"],
-});
+const { book, rating, category, bookCategory, order, orderItem } =
+  new PrismaClient({
+    log: ["query", "info", "warn", "error"],
+  });
 
 const {
   createError,
@@ -151,7 +152,6 @@ const createBook = async (req, res) => {
   }
 };
 
-
 const getBooks = async (req, res) => {
   try {
     const result = await book.findMany({
@@ -213,8 +213,7 @@ const getBookById = async (req, res) => {
     if (!foundBook) {
       throw createError(NOT_FOUND, "Book not found");
     }
-
-    //return categories with array format
+    //return categories with array formatMore actions
     const formattedCategories = foundBook.categories.map(
       (cat) => cat.category.name
     );
@@ -513,6 +512,41 @@ const createCategory = async (req, res) => {
   }
 };
 
+const deleteCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    const parsedCategoryId = parseInt(categoryId);
+
+    //check if exist
+    const existingCategory = await category.findUnique({
+      where: { categoryId: parsedCategoryId },
+    });
+
+    if (!existingCategory) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+
+    //delete link between book-category
+    await bookCategory.deleteMany({
+      where: { categoryId: parsedCategoryId },
+    });
+
+    // delete category
+    const deletedCategory = await category.delete({
+      where: { categoryId: parsedCategoryId },
+    });
+
+    res.status(200).json({
+      message: "Category deleted successfully",
+      deletedCategory,
+    });
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
 const getCategories = async (req, res) => {
   try {
     const result = await category.findMany();
@@ -521,6 +555,23 @@ const getCategories = async (req, res) => {
     console.error(error);
     res.status(500).json(error);
   }
+};
+
+// Helper function to check if a user has purchased a specific book
+const hasUserPurchasedBook = async (userId, bookId) => {
+  if (!userId || !bookId) return false;
+
+  const purchasedBook = await orderItem.findFirst({
+    where: {
+      bookId: parseInt(bookId),
+      order: {
+        userId: parseInt(userId),
+        status: "PAID",
+      },
+    },
+  });
+
+  return !!purchasedBook;
 };
 
 module.exports = {
@@ -533,5 +584,6 @@ module.exports = {
   deleteBook,
   addRating,
   createCategory,
+  deleteCategory,
   getCategories,
 };

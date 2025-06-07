@@ -6,12 +6,18 @@ const { isAdmin, isMember } = require('../middlewares/role.middleware');
 const { 
     createOrderFromCart,
     getOrdersByUser,
-    buyNow
+    buyNow,
+    getAllOrders
 } = require('../services/order.service');
 
 router.post('/buy-now', authenticate, buyNow); //
 router.post('/place-order', authenticate, createOrderFromCart); //
 router.get('/get-my-orders', authenticate, getOrdersByUser); //
+
+/*Admin route */
+router.get('/get-all-orders', authenticate, isAdmin, getAllOrders); // 
+/*Admin route */
+
 
 
 module.exports = router;

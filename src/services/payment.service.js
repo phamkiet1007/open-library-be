@@ -68,7 +68,7 @@ const createPayment = async (req, res) => {
         data: { status: 'PAID' }
       });
 
-      //decrease number of book's quantity
+      //decrease number of book's quantity & create purchasedBook records
       for (const orderItem of existingOrder.orderItems) {
         await tx.book.update({
           where: { bookId: orderItem.bookId },
@@ -78,6 +78,25 @@ const createPayment = async (req, res) => {
             }
           }
         });
+
+        const alreadyPurchased = await tx.purchasedBook.findUnique({
+          where: {
+            userId_bookId: {
+              userId,
+              bookId: orderItem.bookId
+            }
+          }
+        });
+
+        if (!alreadyPurchased) {
+          await tx.purchasedBook.create({
+            data: {
+              userId,
+              bookId: orderItem.bookId,
+              purchasedAt: getVietnamTime()
+            }
+          });
+        }
       }
 
       return payment;

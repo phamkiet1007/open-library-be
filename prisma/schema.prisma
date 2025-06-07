@@ -25,6 +25,7 @@ model User {
   email              String                  @unique
   password           String
   address            String
+  isBlocked          Boolean                 @default(false)
   created_at         DateTime                @default(now())
   email_verification EmailVerificationStatus @default(NOT_VERIFIED)
   role               Role                    @default(MEMBER)
@@ -35,6 +36,8 @@ model User {
   ratings            Rating[]
   verificationToken  VerificationToken[]
   wishlist           Wishlist[]
+  purchasedBooks     PurchasedBook[]
+
 }
 
 model Book {
@@ -62,6 +65,8 @@ model Book {
   orderItems         OrderItem[]
   ratings            Rating[]
   wishlistedBy       Wishlist[]
+  purchasedBy         PurchasedBook[]
+
 }
 
 model Category {
@@ -153,6 +158,18 @@ model Wishlist {
 
   @@id([userId, bookId])
 }
+
+model PurchasedBook {
+  userId      Int
+  bookId      Int
+  purchasedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [bookId], onDelete: Cascade)
+
+  @@id([userId, bookId])
+}
+
 
 enum Role {
   MEMBER

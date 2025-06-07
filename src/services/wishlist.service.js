@@ -6,6 +6,7 @@ const addtoWishlist = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { bookId } = req.body;
+
     if (!prisma.wishlist) {
       console.error("Wishlist model not available in Prisma client");
       return res.status(500).json({ error: "Database configuration error" });
@@ -21,7 +22,7 @@ const addtoWishlist = async (req, res) => {
     });
 
     if (exists) {
-      res.status(400).json({ message: "Book is already in wishlist" });
+      return res.status(400).json({ message: "Book is already in wishlist" });
     }
 
     const wishlistItem = await prisma.wishlist.create({
@@ -84,6 +85,15 @@ const isInWishlist = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { bookId } = req.body;
+
+    // Validate required parameters
+    if (!bookId) {
+      return res.status(400).json({ error: "bookId is required" });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ error: "User authentication required" });
+    }
 
     const exists = await prisma.wishlist.findUnique({
       where: {
